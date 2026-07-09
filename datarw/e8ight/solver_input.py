@@ -202,35 +202,3 @@ class SolverData:
         self.file = filename
         self.data = JsonTool()
         self.data.read(filename)
-
-
-
-if __name__ == "__main__":
-    # solver = SolverData()
-    # solver.create('./test.json')
-    # solver.add_grid('dummy')
-    # solver.add_grid('fluid')
-    # solver.add_material('solid')
-    # solver.add_material('fluid', True)
-    # solver.add_particle_generation('solid', "room_evacuation_basic.stl", "solid", 0)
-    # solver.add_particle_generation('fluid', "room_evacuation_basic_agent.stl", "fluid", 1)
-    # # solver.add_inlet("CROWD")
-    # solver.add_outlet("point")
-    # solver.save()
-
-    # solver = SolverData()
-    # solver.create('/home/test/Desktop/Test1/test1.json')
-    # solver.add_grid('dummy')
-    # solver.add_grid('fluid')
-    # solver.add_material('solid')
-    # solver.add_material('fluid', True)
-    # solver.add_particle_generation('solid')
-    # solver.add_particle_generation('fluid')
-    # solver.add_particle_generation_regional_segment("test1.stl", "solid", 0)
-    # solver.add_particle_generation_regional_segment("test1_agent_small_2.stl", "fluid", 1)
-    # solver.add_result_report(0.02)
-
-    # # solver.add_inlet("CROWD")
-    # solver.add_outlet("point")
-    # solver.save()
-    ...
