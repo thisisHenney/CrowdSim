@@ -1,0 +1,11 @@
+# CrowdSim 의존성
+# 설치: python -m venv .venv && .venv\Scripts\pip install -r requirements.txt
+# 참고: nextlib(D:\lib)은 .venv\Lib\site-packages\nextlib.pth 로 연결됨
+PySide6>=6.7
+vtk>=9.3
+numpy
+opencv-python
+
+# nextlib 의존성
+psutil
+matplotlib

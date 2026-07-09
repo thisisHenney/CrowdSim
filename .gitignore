@@ -10,6 +10,7 @@ build/
 solver/
 
 # Python
+.venv/
 __pycache__/
 *.pyc
 *.pyo
