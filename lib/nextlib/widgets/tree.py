@@ -94,7 +94,14 @@ class TreeWidget(QObject):
 
     def _on_double_click(self, item, col):
         w = self.widget
-        if not item or col == 0 or w.itemWidget(item, col):
+        if not item or w.itemWidget(item, col):
+            self._editing = False
+            return
+
+        pos = self._get_item_pos(item)
+        self.itemDoubleClickedWithPos.emit(pos, col)
+
+        if col == 0:
             self._editing = False
             return
 
@@ -105,9 +112,6 @@ class TreeWidget(QObject):
         item.setFlags(item.flags() | Qt.ItemIsEditable)
         w.editItem(item, col)
         self._editing = True
-
-        pos = self._get_item_pos(item)
-        self.itemDoubleClickedWithPos.emit(pos, col)
 
     def _on_key_press(self, event):
         w = self.widget

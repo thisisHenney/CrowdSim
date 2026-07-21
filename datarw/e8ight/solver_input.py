@@ -61,6 +61,7 @@ class SolverData:
         self.data.add("config", {'particle_generation': []})
         self.data.add("config", {'inlet': []})
         self.data.add("config", {'outlet': []})
+        self.data.add("config", {'zone': []})
         self.data.add("config", {'result_report': {}})
 
     def add_grid(self, name='dummy'):
@@ -166,13 +167,36 @@ class SolverData:
                 "grid": 1
             })
 
+    def add_zone(self, zone_type='avoid_zone'):
+        if zone_type == 'avoid_zone':
+            self.data.add('config.zone', {
+                "_comment": "",
+                "p1": [0, 0],
+                "p2": [0, 0],
+                "direction": [0, 1],
+                "length": 1.0,
+                "zone_type": "avoid_zone",
+                "K_avo": 200.0,
+                "avoid_radius": 15.0,
+                "grid": 1
+            })
+        else:
+            self.data.add('config.zone', {
+                "_comment": "",
+                "p1": [0, 0],
+                "p2": [0, 0],
+                "direction": [0, 1],
+                "length": 1.0,
+                "zone_type": "change_goal_position",
+                "outlet_id": 0,
+                "grid": 1
+            })
+
     def add_result_report(self):
+        existing = self.data.get('config.result_report') or {}
         self.data.add('config.result_report', {
-            "export_path": "",
-            "export_format": [
-                "BINARY_VTK",
-                "NFILE"
-            ],
+            "export_path": existing.get('export_path', ''),
+            "export_format": existing.get('export_format', ["BINARY_VTK", "NFILE"]),
             "save_start_time": 0.0,
             "save_end_time": 100,
             "save_time_interval": 0.1,

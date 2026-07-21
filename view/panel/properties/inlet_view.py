@@ -2,6 +2,10 @@ from nextlib.utils.ui import load_ui
 from view.panel.properties.inlet_ui import Ui_InletForm
 
 
+_KNOWN_INLET_KEYS = {'name', 'type', 'exclude_outlets', 'p1', 'p2', 'velocity', 'dx',
+                     'interval', 'start_time', 'end_time', 'material_index', 'grid', 'outlet_index'}
+
+
 class InletData:
     def __init__(self):
         self.name = ''
@@ -17,6 +21,7 @@ class InletData:
         self.material_index = 0
         self.grid = 1
         self.outlet_index = -1
+        self.raw_extra = {}
 
 
 class InletView:
@@ -161,6 +166,7 @@ class InletView:
             d.material_index = str(inlet.get('material_index', 0))
             d.grid = str(inlet.get('grid', 1))
             d.outlet_index = str(inlet.get('outlet_index', -1))
+            d.raw_extra = {k: v for k, v in inlet.items() if k not in _KNOWN_INLET_KEYS}
             self.inlet_data.append(d)
             ui.comboBox_name.addItem(d.name)
 
@@ -210,5 +216,8 @@ class InletView:
             solver.data.set(f'config.inlet[{i}].material_index', int(d.material_index))
             solver.data.set(f'config.inlet[{i}].grid', int(d.grid))
             solver.data.set(f'config.inlet[{i}].outlet_index', int(d.outlet_index))
+
+            for k, v in getattr(d, 'raw_extra', {}).items():
+                solver.data.set(f'config.inlet[{i}].{k}', v)
 
         return solver

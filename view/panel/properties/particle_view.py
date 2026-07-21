@@ -37,6 +37,7 @@ class ParticleView:
         self.ui = load_ui(None, Ui_ParticleForm).ui
 
         self.particle_data = []
+        self._binary_passthrough = []
 
         self._initialize()
 
@@ -269,9 +270,15 @@ class ParticleView:
 
         ui.comboBox_name.blockSignals(True)
         self.particle_data.clear()
+        self._binary_passthrough.clear()
         ui.comboBox_name.clear()
 
         for i, p in enumerate(particles):
+            if 'binary_path' in p:
+                # GUI에서 편집 불가한 초기 군중 binary 항목은 원본 그대로 보존
+                self._binary_passthrough.append(dict(p))
+                continue
+
             d = ParticleData()
             d.name = f'gen_{i}'
             d.is_two_dimensional = bool(p.get('two_dimensional', True))
@@ -328,6 +335,9 @@ class ParticleView:
         return self.ui.widget
 
     def save_input_file(self, solver):
+        for raw in self._binary_passthrough:
+            solver.data.add('config.particle_generation', dict(raw))
+
         for i, d in enumerate(self.particle_data):
             solver.add_particle_generation(int(d.grid))
 

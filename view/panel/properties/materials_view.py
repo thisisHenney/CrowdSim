@@ -2,6 +2,9 @@ from nextlib.utils.ui import load_ui
 from view.panel.properties.material_ui import Ui_MaterialsForm
 
 
+_KNOWN_MATERIAL_KEYS = {'name', 'is_main_material', 'rho_min', 'rho_max', 'mu', 'outlet_id'}
+
+
 class MaterialData:
     def __init__(self):
         self.name = ''
@@ -11,6 +14,7 @@ class MaterialData:
         self.rho_max = 5
         self.mu = 0.0
         self.outlet_id = 0
+        self.raw_extra = {}
 
 
 class MaterialsView:
@@ -125,6 +129,9 @@ class MaterialsView:
             solver.data.set(f'config.materials[{i}].mu', float(d.mu))
             solver.data.set(f'config.materials[{i}].outlet_id', int(d.outlet_id))
 
+            for k, v in getattr(d, 'raw_extra', {}).items():
+                solver.data.set(f'config.materials[{i}].{k}', v)
+
         return solver
 
     def load_input_file(self, solver):
@@ -145,6 +152,7 @@ class MaterialsView:
             d.rho_max = str(m.get('rho_max', 5))
             d.mu = str(m.get('mu', 0.0))
             d.outlet_id = str(m.get('outlet_id', -1))
+            d.raw_extra = {k: v for k, v in m.items() if k not in _KNOWN_MATERIAL_KEYS}
             self.material_data.append(d)
             ui.comboBox_name.addItem(d.name)
 

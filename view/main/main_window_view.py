@@ -7,7 +7,7 @@ from pathlib import Path
 from PySide6.QtWidgets import (QMainWindow, QFrame, QVBoxLayout, QHBoxLayout, QMenu, QDialog,
                                QLabel, QPushButton, QTextBrowser, QLineEdit, QFileDialog,
                                QMessageBox, QApplication)
-from PySide6.QtCore import QSize, QSettings, Qt, QPointF
+from PySide6.QtCore import QSize, QSettings, Qt, QPointF, QTimer
 from PySide6.QtGui import (QAction, QCursor, QPixmap, QPainter, QColor, QIcon,
                            QPen, QPolygonF)
 
@@ -32,7 +32,9 @@ from view.panel.properties.materials_view import MaterialsView
 from view.panel.properties.particle_view import ParticleView
 from view.panel.properties.inlet_view import InletView
 from view.panel.properties.outlet_view import OutletView
+from view.panel.properties.zone_view import ZoneView
 from view.panel.properties.report_view import ReportView
+from view.panel.properties.export_view import ExportView
 
 from datarw.e8ight.solver_input import SolverData
 
@@ -60,7 +62,9 @@ class MainWindowView(QMainWindow, AnimationMixin, SolverRunMixin,
         self.prop_particle = ParticleView(self)
         self.prop_inlet = InletView(self)
         self.prop_outlet = OutletView(self)
+        self.prop_zone = ZoneView(self)
         self.prop_report = ReportView(self)
+        self.prop_export = ExportView(self)
 
         self.tree = TreeWidget(widget=self._ui.treeWidget)
         self.vtk = VtkWidgetBase(self)
@@ -97,6 +101,7 @@ class MainWindowView(QMainWindow, AnimationMixin, SolverRunMixin,
         self.cmd.connect_to_statusbar(self._ui.statusbar)
 
         self.tree.itemSelectedWithPos.connect(lambda pos, col: self._changed_selection_item())
+        self.tree.itemDoubleClickedWithPos.connect(lambda pos, col: self._fold_property_item(pos))
 
         self._init_toolbar()
         self._init_menu_connections()
@@ -395,7 +400,12 @@ class MainWindowView(QMainWindow, AnimationMixin, SolverRunMixin,
         self.tree.insert([3], 'Particle Generation')
         self.tree.insert([4], 'Inlet')
         self.tree.insert([5], 'Outlet')
-        self.tree.insert([6], 'Report&Export')
+        self.tree.insert([6], 'Zone')
+        self.tree.insert([7], 'Report')
+        self.tree.insert([8], 'Export')
+
+        for i in range(9):
+            self.tree.set_editable([i], 0, editable=False)
 
     def _changed_selection_item(self):
         pos = self.tree.get_current_pos()
@@ -403,7 +413,27 @@ class MainWindowView(QMainWindow, AnimationMixin, SolverRunMixin,
             return
 
         if len(pos) == 1:
-            self.properties.open_item(pos[0])
+            idx = pos[0]
+            self.properties.open_item(idx)
+            self._pending_open_index = idx
+            QTimer.singleShot(QApplication.doubleClickInterval(),
+                               lambda i=idx: self._clear_pending_open(i))
+
+    def _clear_pending_open(self, idx):
+        if getattr(self, '_pending_open_index', None) == idx:
+            self._pending_open_index = None
+
+    def _fold_property_item(self, pos):
+        if not pos or len(pos) != 1:
+            return
+
+        idx = pos[0]
+        if getattr(self, '_pending_open_index', None) == idx:
+            # 방금 이 더블클릭의 첫 클릭으로 새로 열린 항목이면 접지 않고 열린 채로 둔다
+            self._pending_open_index = None
+            return
+
+        self.properties.close_item(idx)
 
     def set_defaults_vtk(self):
         self._stop_preload()
@@ -423,13 +453,16 @@ class MainWindowView(QMainWindow, AnimationMixin, SolverRunMixin,
         self.properties.insert_item(3, 'Particle', self.prop_particle.get_widget())
         self.properties.insert_item(4, 'Inlet', self.prop_inlet.get_widget())
         self.properties.insert_item(5, 'Outlet', self.prop_outlet.get_widget())
+        self.properties.insert_item(6, 'Zone', self.prop_zone.get_widget())
 
-        self.properties.insert_item(6, 'Report', self.prop_report.get_widget())
+        self.properties.insert_item(7, 'Report', self.prop_report.get_widget())
+        self.properties.insert_item(8, 'Export', self.prop_export.get_widget())
 
     def _property_views(self):
         """입력 파일과 연동되는 설정 패널 목록 (저장/로드 순서와 동일)"""
         return (self.prop_solverCommon, self.prop_grid, self.prop_materials,
-                self.prop_particle, self.prop_inlet, self.prop_outlet, self.prop_report)
+                self.prop_particle, self.prop_inlet, self.prop_outlet, self.prop_zone, self.prop_report,
+                self.prop_export)
 
     def new_project(self, parent=None):
         dlg = QDialog(parent or self)
@@ -532,8 +565,18 @@ class MainWindowView(QMainWindow, AnimationMixin, SolverRunMixin,
             prop.load_input_file(solver)
 
     def save_input_file(self):
+        json_path = Path(rf'{self.prj.path}/{self.prj.name}.json')
+
         solver = SolverData()
-        solver.create(Path(rf'{self.prj.path}/{self.prj.name}.json'))
+        if json_path.is_file():
+            solver.load(json_path)
+        else:
+            solver.create(json_path)
+
+        # 각 패널이 자체적으로 전체 목록을 재구성하는 항목은 append 중복을 막기 위해 비워둔다.
+        # (result_report처럼 dict.update로 병합되는 항목이나, GUI가 다루지 않는 필드는 그대로 보존됨)
+        for key in ('grid', 'materials', 'particle_generation', 'inlet', 'outlet', 'zone'):
+            solver.data.set(f'config.{key}', [])
 
         for prop in self._property_views():
             solver = prop.save_input_file(solver)

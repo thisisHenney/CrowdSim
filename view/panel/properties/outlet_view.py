@@ -2,6 +2,9 @@ from nextlib.utils.ui import load_ui
 from view.panel.properties.outlet_ui import Ui_OutletForm
 
 
+_KNOWN_OUTLET_KEYS = {'name', 'num', 'is_erase', 'type', 'p1', 'p2', 'grid'}
+
+
 class OutletData:
     def __init__(self):
         self.name = 'outlet'
@@ -12,6 +15,7 @@ class OutletData:
         self.p1 = [0, 0]
         self.p2 = [0, 0]
         self.grid = 1
+        self.raw_extra = {}
 
 
 class OutletView:
@@ -139,6 +143,7 @@ class OutletView:
                 d.p1 = [str(p1[0]), str(p1[1])]
                 d.p2 = [str(p2[0]), str(p2[1])]
             d.grid = outlet.get('grid', 1)
+            d.raw_extra = {k: v for k, v in outlet.items() if k not in _KNOWN_OUTLET_KEYS}
             self.outlet_data.append(d)
             ui.comboBox_name.addItem(d.name)
 
@@ -181,5 +186,8 @@ class OutletView:
                 solver.data.set(f'config.outlet[{i}].p2[0]', float(d.p2[0]))
                 solver.data.set(f'config.outlet[{i}].p2[1]', float(d.p2[1]))
             solver.data.set(f'config.outlet[{i}].grid', getattr(d, 'grid', 1))
+
+            for k, v in getattr(d, 'raw_extra', {}).items():
+                solver.data.set(f'config.outlet[{i}].{k}', v)
 
         return solver

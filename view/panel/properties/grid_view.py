@@ -2,6 +2,9 @@ from nextlib.utils.ui import load_ui
 from view.panel.properties.grid_ui import Ui_GridForm
 
 
+_KNOWN_GRID_KEYS = {'name', 'domain', 'width', 'max_particle', 'comment'}
+
+
 class GridData:
     def __init__(self):
         self.name = ''
@@ -10,6 +13,7 @@ class GridData:
         self.domain_max = [1, 1]
         self.width = -1
         self.max_particle = 10000
+        self.raw_extra = {}
 
 
 class GridView:
@@ -145,6 +149,9 @@ class GridView:
             solver.data.set(f'config.grid[{i}].width', int(d.width))
             solver.data.set(f'config.grid[{i}].max_particle', int(d.max_particle))
 
+            for k, v in getattr(d, 'raw_extra', {}).items():
+                solver.data.set(f'config.grid[{i}].{k}', v)
+
         return solver
 
     def load_input_file(self, solver):
@@ -167,6 +174,7 @@ class GridView:
             d.domain_max = [str(mx[0]), str(mx[1])]
             d.width = str(g.get('width', -1))
             d.max_particle = str(g.get('max_particle', 10000))
+            d.raw_extra = {k: v for k, v in g.items() if k not in _KNOWN_GRID_KEYS}
             self.grid_data.append(d)
             ui.comboBox_name.addItem(d.name)
 
