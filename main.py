@@ -3,6 +3,10 @@ os.environ["QT_LOGGING_RULES"] = "qt.gui.imageio=false"
 import sys
 from pathlib import Path
 from dataclasses import dataclass
+
+# 프로젝트 동봉 lib/(nextlib 등)을 최우선으로 사용 - 외부 경로/PYTHONPATH에 의존하지 않음
+sys.path.insert(0, str(Path(__file__).resolve().parent / 'lib'))
+
 from PySide6.QtWidgets import QApplication
 from PySide6.QtGui import QFont
 
