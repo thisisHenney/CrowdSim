@@ -100,8 +100,8 @@ class MainWindowView(QMainWindow, AnimationMixin, SolverRunMixin,
         self.cmd.put_in_layout(self._ui.verticalLayout_command)
         self.cmd.connect_to_statusbar(self._ui.statusbar)
 
-        self.tree.itemSelectedWithPos.connect(lambda pos, col: self._changed_selection_item())
         self.tree.itemDoubleClickedWithPos.connect(lambda pos, col: self._fold_property_item(pos))
+        self.tree.itemsSelectedWithPos.connect(self._changed_selection_items)
 
         self._init_toolbar()
         self._init_menu_connections()
@@ -407,33 +407,25 @@ class MainWindowView(QMainWindow, AnimationMixin, SolverRunMixin,
         for i in range(9):
             self.tree.set_editable([i], 0, editable=False)
 
-    def _changed_selection_item(self):
-        pos = self.tree.get_current_pos()
-        if not pos:
-            return
-
-        if len(pos) == 1:
-            idx = pos[0]
-            self.properties.open_item(idx)
-            self._pending_open_index = idx
-            QTimer.singleShot(QApplication.doubleClickInterval(),
-                               lambda i=idx: self._clear_pending_open(i))
-
-    def _clear_pending_open(self, idx):
-        if getattr(self, '_pending_open_index', None) == idx:
-            self._pending_open_index = None
-
     def _fold_property_item(self, pos):
         if not pos or len(pos) != 1:
             return
 
         idx = pos[0]
-        if getattr(self, '_pending_open_index', None) == idx:
-            # 방금 이 더블클릭의 첫 클릭으로 새로 열린 항목이면 접지 않고 열린 채로 둔다
-            self._pending_open_index = None
-            return
+        if self.properties.is_item_open(idx):
+            self.properties.close_item(idx)
+        else:
+            self.properties.open_item(idx)
 
-        self.properties.close_item(idx)
+    def _changed_selection_items(self, positions):
+        """트리 선택 변경 시: 단일 선택이면 그 항목만 맨 위로 스크롤하고,
+        다중 선택이면 스크롤 없이 선택된 항목들만(열림/닫힘 상태와 무관하게) 표시한다."""
+        indices = [pos[0] for pos in positions if len(pos) == 1]
+        if len(indices) == 1:
+            self.properties.show_all()
+            self.properties.scroll_to_item(indices[0])
+        elif len(indices) > 1:
+            self.properties.show_only(indices)
 
     def set_defaults_vtk(self):
         self._stop_preload()

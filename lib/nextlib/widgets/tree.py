@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (
 class TreeWidget(QObject):
     itemSelectedWithPos = Signal(list, int)
     itemDoubleClickedWithPos = Signal(list, int)
+    itemsSelectedWithPos = Signal(list)  # 현재 선택된 모든 항목의 pos 리스트 (다중선택용)
 
     def __init__(self, parent=None, widget: QTreeWidget = None):
         super().__init__(parent)
@@ -156,6 +157,7 @@ class TreeWidget(QObject):
         pos = self._get_item_pos(item)
 
         self.itemSelectedWithPos.emit(pos, col)
+        self.itemsSelectedWithPos.emit([self._get_item_pos(it) for it in selected])
 
     def _get_item_pos(self, item):
         pos = []
