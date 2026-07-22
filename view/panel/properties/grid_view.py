@@ -2,7 +2,7 @@ from nextlib.utils.ui import load_ui
 from view.panel.properties.grid_ui import Ui_GridForm
 
 
-_KNOWN_GRID_KEYS = {'name', 'domain', 'width', 'max_particle', 'comment'}
+_KNOWN_GRID_KEYS = {'name', 'domain', 'width', 'max_particle'}
 
 
 class GridData:

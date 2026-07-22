@@ -72,8 +72,7 @@ class SolverData:
                 "max": [11, 11, 1]
             },
             "width": -1,
-            "max_particle": 10000,
-            "comment": "max_particle는 초기화시 allocate할 입자 수. 너무 크게 잡으면 메모리가 부족할 수 있음. 이후 동적으로 늘어남"
+            "max_particle": 10000
         })
 
     def add_material(self, name='solid', is_main=False):
@@ -201,21 +200,25 @@ class SolverData:
             "save_end_time": 100,
             "save_time_interval": 0.1,
             "items": {
-                "density": True,
                 "pressure": True,
-                "restDensity": True,  # "rest_density": True,
+                "rest_density": True,
+                "density": True,
                 "position": True,
                 "velocity": True,
-                "goal_position": True,
-                "adjoint": True,
-                "prt_idx": True,
+                "zone_id": True,
+                "outlet_id": True,
+                "path_field_id": True,
+                "path_direction": True,
                 "forward_vector": True,
+                "path_direction_array": False,
+                "final_path_vector": True,
                 "line_id": True,
-                "acceleration_collision": True
+                "goal_position": True
             },
             "flags": {
-                "path_goal_point": False,
-                "path_solid": False
+                "zone": True,
+                "solid": True,
+                "path_solid": True
             }
         })
 

@@ -161,11 +161,11 @@ class Ui_ReportForm(object):
 
         self.verticalLayout_2.addWidget(self.checkBox_density)
 
-        self.checkBox_restDensity = QCheckBox(self.groupBox_5)
-        self.checkBox_restDensity.setObjectName(u"checkBox_restDensity")
-        self.checkBox_restDensity.setChecked(True)
+        self.checkBox_rest_density = QCheckBox(self.groupBox_5)
+        self.checkBox_rest_density.setObjectName(u"checkBox_rest_density")
+        self.checkBox_rest_density.setChecked(True)
 
-        self.verticalLayout_2.addWidget(self.checkBox_restDensity)
+        self.verticalLayout_2.addWidget(self.checkBox_rest_density)
 
         self.checkBox_position = QCheckBox(self.groupBox_5)
         self.checkBox_position.setObjectName(u"checkBox_position")
@@ -185,18 +185,6 @@ class Ui_ReportForm(object):
 
         self.verticalLayout_2.addWidget(self.checkBox_goal_position)
 
-        self.checkBox_adjoint = QCheckBox(self.groupBox_5)
-        self.checkBox_adjoint.setObjectName(u"checkBox_adjoint")
-        self.checkBox_adjoint.setChecked(True)
-
-        self.verticalLayout_2.addWidget(self.checkBox_adjoint)
-
-        self.checkBox_prt_idx = QCheckBox(self.groupBox_5)
-        self.checkBox_prt_idx.setObjectName(u"checkBox_prt_idx")
-        self.checkBox_prt_idx.setChecked(True)
-
-        self.verticalLayout_2.addWidget(self.checkBox_prt_idx)
-
         self.checkBox_forward_vector = QCheckBox(self.groupBox_5)
         self.checkBox_forward_vector.setObjectName(u"checkBox_forward_vector")
         self.checkBox_forward_vector.setChecked(True)
@@ -209,11 +197,41 @@ class Ui_ReportForm(object):
 
         self.verticalLayout_2.addWidget(self.checkBox_line_id)
 
-        self.checkBox_acceleration_collision = QCheckBox(self.groupBox_5)
-        self.checkBox_acceleration_collision.setObjectName(u"checkBox_acceleration_collision")
-        self.checkBox_acceleration_collision.setChecked(True)
+        self.checkBox_zone_id = QCheckBox(self.groupBox_5)
+        self.checkBox_zone_id.setObjectName(u"checkBox_zone_id")
+        self.checkBox_zone_id.setChecked(True)
 
-        self.verticalLayout_2.addWidget(self.checkBox_acceleration_collision)
+        self.verticalLayout_2.addWidget(self.checkBox_zone_id)
+
+        self.checkBox_outlet_id = QCheckBox(self.groupBox_5)
+        self.checkBox_outlet_id.setObjectName(u"checkBox_outlet_id")
+        self.checkBox_outlet_id.setChecked(True)
+
+        self.verticalLayout_2.addWidget(self.checkBox_outlet_id)
+
+        self.checkBox_path_field_id = QCheckBox(self.groupBox_5)
+        self.checkBox_path_field_id.setObjectName(u"checkBox_path_field_id")
+        self.checkBox_path_field_id.setChecked(True)
+
+        self.verticalLayout_2.addWidget(self.checkBox_path_field_id)
+
+        self.checkBox_path_direction = QCheckBox(self.groupBox_5)
+        self.checkBox_path_direction.setObjectName(u"checkBox_path_direction")
+        self.checkBox_path_direction.setChecked(True)
+
+        self.verticalLayout_2.addWidget(self.checkBox_path_direction)
+
+        self.checkBox_path_direction_array = QCheckBox(self.groupBox_5)
+        self.checkBox_path_direction_array.setObjectName(u"checkBox_path_direction_array")
+        self.checkBox_path_direction_array.setChecked(False)
+
+        self.verticalLayout_2.addWidget(self.checkBox_path_direction_array)
+
+        self.checkBox_final_path_vector = QCheckBox(self.groupBox_5)
+        self.checkBox_final_path_vector.setObjectName(u"checkBox_final_path_vector")
+        self.checkBox_final_path_vector.setChecked(True)
+
+        self.verticalLayout_2.addWidget(self.checkBox_final_path_vector)
 
 
         self.verticalLayout_6.addLayout(self.verticalLayout_2)
@@ -245,13 +263,21 @@ class Ui_ReportForm(object):
         self.verticalLayout_3 = QVBoxLayout()
         self.verticalLayout_3.setObjectName(u"verticalLayout_3")
         self.verticalLayout_3.setContentsMargins(10, -1, -1, -1)
-        self.checkBox_path_goal_point = QCheckBox(self.groupBox_6)
-        self.checkBox_path_goal_point.setObjectName(u"checkBox_path_goal_point")
+        self.checkBox_zone = QCheckBox(self.groupBox_6)
+        self.checkBox_zone.setObjectName(u"checkBox_zone")
+        self.checkBox_zone.setChecked(True)
 
-        self.verticalLayout_3.addWidget(self.checkBox_path_goal_point)
+        self.verticalLayout_3.addWidget(self.checkBox_zone)
+
+        self.checkBox_solid = QCheckBox(self.groupBox_6)
+        self.checkBox_solid.setObjectName(u"checkBox_solid")
+        self.checkBox_solid.setChecked(True)
+
+        self.verticalLayout_3.addWidget(self.checkBox_solid)
 
         self.checkBox_path_solid = QCheckBox(self.groupBox_6)
         self.checkBox_path_solid.setObjectName(u"checkBox_path_solid")
+        self.checkBox_path_solid.setChecked(True)
 
         self.verticalLayout_3.addWidget(self.checkBox_path_solid)
 
@@ -279,17 +305,21 @@ class Ui_ReportForm(object):
         self.groupBox_5.setTitle(QCoreApplication.translate("ReportForm", u"< Items >", None))
         self.checkBox_pressure.setText(QCoreApplication.translate("ReportForm", u"presssure", None))
         self.checkBox_density.setText(QCoreApplication.translate("ReportForm", u"density", None))
-        self.checkBox_restDensity.setText(QCoreApplication.translate("ReportForm", u"restDensity", None))
+        self.checkBox_rest_density.setText(QCoreApplication.translate("ReportForm", u"rest_density", None))
         self.checkBox_position.setText(QCoreApplication.translate("ReportForm", u"position", None))
         self.checkBox_velocity.setText(QCoreApplication.translate("ReportForm", u"velocity", None))
         self.checkBox_goal_position.setText(QCoreApplication.translate("ReportForm", u"goal_position", None))
-        self.checkBox_adjoint.setText(QCoreApplication.translate("ReportForm", u"adjoint", None))
-        self.checkBox_prt_idx.setText(QCoreApplication.translate("ReportForm", u"prt_idx", None))
         self.checkBox_forward_vector.setText(QCoreApplication.translate("ReportForm", u"forward_vector", None))
         self.checkBox_line_id.setText(QCoreApplication.translate("ReportForm", u"line_id", None))
-        self.checkBox_acceleration_collision.setText(QCoreApplication.translate("ReportForm", u"acceleration_collision", None))
+        self.checkBox_zone_id.setText(QCoreApplication.translate("ReportForm", u"zone_id", None))
+        self.checkBox_outlet_id.setText(QCoreApplication.translate("ReportForm", u"outlet_id", None))
+        self.checkBox_path_field_id.setText(QCoreApplication.translate("ReportForm", u"path_field_id", None))
+        self.checkBox_path_direction.setText(QCoreApplication.translate("ReportForm", u"path_direction", None))
+        self.checkBox_path_direction_array.setText(QCoreApplication.translate("ReportForm", u"path_direction_array", None))
+        self.checkBox_final_path_vector.setText(QCoreApplication.translate("ReportForm", u"final_path_vector", None))
         self.groupBox_6.setTitle(QCoreApplication.translate("ReportForm", u"< Flags >", None))
-        self.checkBox_path_goal_point.setText(QCoreApplication.translate("ReportForm", u"path_goal_point", None))
+        self.checkBox_zone.setText(QCoreApplication.translate("ReportForm", u"zone", None))
+        self.checkBox_solid.setText(QCoreApplication.translate("ReportForm", u"solid", None))
         self.checkBox_path_solid.setText(QCoreApplication.translate("ReportForm", u"path_solid", None))
     # retranslateUi
 

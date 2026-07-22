@@ -338,32 +338,37 @@ class ParticleView:
         for raw in self._binary_passthrough:
             solver.data.add('config.particle_generation', dict(raw))
 
+        # binary passthrough 항목이 리스트 앞쪽을 이미 차지하고 있으므로,
+        # 이 루프에서 새로 append하는 일반 항목의 실제 인덱스는 i가 아니라 offset+i다.
+        # (예전엔 i를 그대로 써서 binary 항목을 일반 항목 필드로 덮어쓰는 버그가 있었음)
+        offset = len(self._binary_passthrough)
         for i, d in enumerate(self.particle_data):
+            idx = offset + i
             solver.add_particle_generation(int(d.grid))
 
-            solver.data.set(f'config.particle_generation[{i}].two_dimensional', d.is_two_dimensional)
-            solver.data.set(f'config.particle_generation[{i}].domain_general', d.is_domain_general)
-            solver.data.set(f'config.particle_generation[{i}].pwb', d.pwb)
+            solver.data.set(f'config.particle_generation[{idx}].two_dimensional', d.is_two_dimensional)
+            solver.data.set(f'config.particle_generation[{idx}].domain_general', d.is_domain_general)
+            solver.data.set(f'config.particle_generation[{idx}].pwb', d.pwb)
 
-            solver.data.set(f'config.particle_generation[{i}].path_field', d.path_field)
+            solver.data.set(f'config.particle_generation[{idx}].path_field', d.path_field)
             if d.path_field:
 
-                solver.data.set(f'config.particle_generation[{i}].is_manhattan', d.is_manhattan)
+                solver.data.set(f'config.particle_generation[{idx}].is_manhattan', d.is_manhattan)
 
-            solver.data.set(f'config.particle_generation[{i}].base_dx', float(d.base_dx))
-            solver.data.set(f'config.particle_generation[{i}].base_region.min[0]', float(d.region_min[0]))
-            solver.data.set(f'config.particle_generation[{i}].base_region.min[1]', float(d.region_min[1]))
-            solver.data.set(f'config.particle_generation[{i}].base_region.min[2]', float(d.region_min[2]))
-            solver.data.set(f'config.particle_generation[{i}].base_region.max[0]', float(d.region_max[0]))
-            solver.data.set(f'config.particle_generation[{i}].base_region.max[1]', float(d.region_max[1]))
-            solver.data.set(f'config.particle_generation[{i}].base_region.max[2]', float(d.region_max[2]))
+            solver.data.set(f'config.particle_generation[{idx}].base_dx', float(d.base_dx))
+            solver.data.set(f'config.particle_generation[{idx}].base_region.min[0]', float(d.region_min[0]))
+            solver.data.set(f'config.particle_generation[{idx}].base_region.min[1]', float(d.region_min[1]))
+            solver.data.set(f'config.particle_generation[{idx}].base_region.min[2]', float(d.region_min[2]))
+            solver.data.set(f'config.particle_generation[{idx}].base_region.max[0]', float(d.region_max[0]))
+            solver.data.set(f'config.particle_generation[{idx}].base_region.max[1]', float(d.region_max[1]))
+            solver.data.set(f'config.particle_generation[{idx}].base_region.max[2]', float(d.region_max[2]))
 
             for j, e in enumerate(d.segment_data):
-                solver.add_particle_generation_regional_segment(i, e.name, e.mesh_path, e.invert_normal, e.material, e.region_type)
+                solver.add_particle_generation_regional_segment(idx, e.name, e.mesh_path, e.invert_normal, e.material, e.region_type)
                 if getattr(e, 'translate', []):
-                    solver.data.set(f'config.particle_generation[{i}].regional_segment[{j}].translate', e.translate)
+                    solver.data.set(f'config.particle_generation[{idx}].regional_segment[{j}].translate', e.translate)
 
-            solver.data.set(f'config.particle_generation[{i}].grid', int(d.grid))
+            solver.data.set(f'config.particle_generation[{idx}].grid', int(d.grid))
 
         return solver
 
