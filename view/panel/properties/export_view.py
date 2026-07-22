@@ -15,8 +15,76 @@ class ExportView:
 
     def _initialize(self):
         ui = self.ui
+        # .ui 생성 코드가 radioButton_5/6을 둘 다 setChecked(True)로 만드는데,
+        # 같은 부모 밑이라 Qt가 자동 상호배타 그룹을 만들어 마지막에 설정된
+        # radioButton_6("구간 설정")가 기본 선택으로 남는다. "전체"를 기본으로 강제한다.
+        ui.radioButton_5.setChecked(True)
+
+        ui.pushButton.clicked.connect(self._clicked_export_result_data)
         ui.pushButton_3.clicked.connect(self._clicked_export_video)
         ui.pushButton_2.clicked.connect(self._clicked_export_image_sequence)
+
+    def _clicked_export_result_data(self):
+        """결과 폴더의 원본 VTK 파일을 프레임 범위만큼 다른 폴더로 복사"""
+        parent = self._parent
+        ui = self.ui
+        anim_steps = getattr(parent, '_anim_steps', None)
+        anim_files = getattr(parent, '_anim_files', None)
+        if not anim_steps or not anim_files:
+            from nextlib.widgets.messagebox import messagebox_warning
+            messagebox_warning(parent,
+                               '내보낼 결과 파일이 없습니다.\n케이스를 열거나 해석을 실행한 뒤 다시 시도해주세요.')
+            return
+
+        total = len(anim_steps)
+        if ui.radioButton_6.isChecked():
+            try:
+                start = int(ui.lineEdit_5.text())
+                end = int(ui.lineEdit_12.text())
+            except ValueError:
+                from nextlib.widgets.messagebox import messagebox_warning
+                messagebox_warning(parent, '시작/종료 프레임은 숫자로 입력해주세요.')
+                return
+            start = max(1, min(start, total))
+            end = max(start, min(end, total))
+        else:
+            start, end = 1, total
+
+        from PySide6.QtWidgets import QFileDialog, QProgressDialog, QApplication
+
+        dest_dir = QFileDialog.getExistingDirectory(parent, '해석 결과 저장 폴더 선택')
+        if not dest_dir:
+            return
+
+        import shutil
+
+        # 선택된 프레임 범위(1-based, 양끝 포함)에 해당하는 원본 VTK 경로 전부 수집 (전체 grid 포함)
+        src_files = []
+        for step in anim_steps[start - 1:end]:
+            for filepath in anim_files.get(step, {}).values():
+                src_files.append(filepath)
+
+        progress = QProgressDialog(
+            f'해석 결과 복사 중... (프레임 {start}~{end})', '취소', 0, len(src_files), parent)
+        progress.setWindowTitle('해석 결과 내보내기')
+        progress.setMinimumDuration(0)
+        progress.setValue(0)
+
+        copied = 0
+        try:
+            for i, filepath in enumerate(src_files):
+                if progress.wasCanceled():
+                    break
+                src = Path(filepath)
+                if src.is_file():
+                    shutil.copy2(src, Path(dest_dir) / src.name)
+                    copied += 1
+                progress.setValue(i + 1)
+                QApplication.processEvents()
+        finally:
+            progress.close()
+            parent._ui.statusbar.showMessage(
+                f'해석 결과 내보내기 완료: {copied}개 파일 -> {dest_dir}')
 
     def _clicked_export_video(self):
         """기존 애니메이션 바의 동영상 내보내기 기능을 그대로 호출"""
