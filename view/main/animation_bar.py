@@ -6,13 +6,14 @@ self.vtk, self.prj, self._ui (statusbar)
 import re
 from pathlib import Path
 
+import numpy as np
 import psutil
 from PySide6.QtWidgets import (QFrame, QHBoxLayout, QLabel, QSlider, QToolButton,
                                QStyleOptionSlider, QStyle, QSpinBox, QComboBox)
 from PySide6.QtCore import Qt, QTimer, QPointF, QRectF
 from PySide6.QtGui import QPixmap, QPainter, QColor, QIcon, QPen, QPolygonF
 
-from view.main.stick_figure import load_stick_figure
+from view.main.stick_figure import load_stick_figure, _read_points
 
 # 프레임 캐시가 시스템 메모리를 다 먹어치우지 않도록 남겨둘 최소 여유 메모리.
 # (입자 수가 많은 케이스는 프레임 하나가 수백 MB에 달할 수 있어, 전체 프레임을
@@ -248,6 +249,7 @@ class AnimationMixin:
         self._anim_steps = []
         self._anim_files = {}
         self._anim_cache = {}
+        self._anim_dynamic_grids = None  # None = 아직 판별 전 -> 전부 표시
         self._anim_timer = QTimer()
         self._anim_timer.timeout.connect(self._anim_tick)
         self._anim_playing = False
@@ -261,6 +263,7 @@ class AnimationMixin:
         self._anim_steps = []
         self._anim_files = {}
         self._anim_cache = {}
+        self._anim_dynamic_grids = None
         self._anim_slider.setValue(0)
         self._anim_slider.setMaximum(0)
         self._anim_spin.blockSignals(True)
@@ -295,6 +298,7 @@ class AnimationMixin:
 
         if self._anim_files:
             self._anim_steps = sorted(self._anim_files.keys())
+            self._anim_dynamic_grids = self._detect_dynamic_grids()
             total = len(self._anim_steps)
             self._anim_slider.setMaximum(total - 1)
             self._anim_slider.setTickInterval(max(1, total // 2))
@@ -308,6 +312,42 @@ class AnimationMixin:
             self._anim_preload()
         else:
             self._anim_bar.setVisible(False)
+
+    def _detect_dynamic_grids(self):
+        """벽·path_field 같은 정적 배경 그리드(솔버 grid 파일이지만 실제로는 안 움직임)를
+        스틱피겨 애니메이션에서 제외하기 위해, 첫 프레임과 마지막 프레임의 좌표를 비교해서
+        실제로 움직이는(=동적인) grid 번호 집합을 판별한다. 판별 불가/오류 시 안전하게 포함시킨다."""
+        dynamic = set()
+        if not self._anim_steps:
+            return dynamic
+
+        first_files = self._anim_files.get(self._anim_steps[0], {})
+        last_files = self._anim_files.get(self._anim_steps[-1], {})
+
+        for grid_num, first_path in first_files.items():
+            last_path = last_files.get(grid_num, first_path)
+            try:
+                pos_first, _ = _read_points(first_path)
+                pos_last, _ = _read_points(last_path)
+            except Exception:
+                dynamic.add(grid_num)
+                continue
+
+            if pos_first is None or pos_last is None:
+                dynamic.add(grid_num)
+                continue
+
+            if pos_first.shape != pos_last.shape or not np.allclose(pos_first, pos_last, equal_nan=True):
+                dynamic.add(grid_num)
+
+        return dynamic
+
+    def _filter_dynamic_files(self, files):
+        """{grid_num: filepath} 중 정적 그리드(벽·path_field 등)를 걸러낸다.
+        아직 판별 전(None)이면 전부 그대로 반환한다."""
+        if self._anim_dynamic_grids is None:
+            return files
+        return {g: p for g, p in files.items() if g in self._anim_dynamic_grids}
 
     def _set_2d_view(self):
         """카메라를 기본 뷰로 설정 (X 오른쪽, Y 위쪽, Z 앞쪽)"""
@@ -348,6 +388,11 @@ class AnimationMixin:
                 self._anim_spin.setMaximum(total)
                 self._anim_total_label.setText(f'/ {total}')
                 self._anim_bar.setVisible(True)
+
+        if len(self._anim_steps) >= 2:
+            # 프레임이 쌓일수록(솔버가 실행 중일 때도) 벽·path_field 같은 정적 grid를
+            # 다시 판별해서 애니메이션에서 계속 제외되도록 갱신한다.
+            self._anim_dynamic_grids = self._detect_dynamic_grids()
 
         if self._anim_steps:
             last_idx = len(self._anim_steps) - 1
@@ -426,7 +471,7 @@ class AnimationMixin:
         if step not in self._anim_cache:
             files = self._anim_files.get(step, {})
             actors = {}
-            for grid_num, filepath in files.items():
+            for grid_num, filepath in self._filter_dynamic_files(files).items():
                 actor = load_stick_figure(filepath)
                 if actor:
                     actors[grid_num] = actor
@@ -448,7 +493,7 @@ class AnimationMixin:
             new_actors = self._anim_cache[step]
         else:
             new_actors = {}
-            for grid_num, filepath in files.items():
+            for grid_num, filepath in self._filter_dynamic_files(files).items():
                 actor = load_stick_figure(filepath)
                 if actor:
                     new_actors[grid_num] = actor
