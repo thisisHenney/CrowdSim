@@ -145,10 +145,11 @@ class StartDialog(QDialog):
             self.close()
             self.recent_list.add_item(get_name, get_path)
         else:
-            result = messagebox_warning(self, 'Error (Remove item)',
-                                                f'Cannot find path: \n'
-                                                f'[{get_path}]\n\n'
-                                                f'Remove this from recent project list?')
+            result = messagebox_warning(
+                self,
+                f'Cannot find path: \n'
+                f'[{get_path}]\n\n'
+                f'Remove this from recent project list?')
             if result:
                 self.recent_list.remove_current_item()
 

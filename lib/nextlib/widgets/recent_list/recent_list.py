@@ -77,7 +77,7 @@ class RecentItemWidget(QWidget):
 
     def remove_current_item(self, question=True):
         if question:
-            result = messagebox_warning(self, "Remove item", f"Remove '{self.name}' from recent project list?")
+            result = messagebox_warning(self, f"Remove '{self.name}' from recent project list?")
             if not result:
                 return
         self._is_removed = True
