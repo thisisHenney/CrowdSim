@@ -567,11 +567,19 @@ class MainWindowView(QMainWindow, AnimationMixin, SolverRunMixin,
 
         # 각 패널이 자체적으로 전체 목록을 재구성하는 항목은 append 중복을 막기 위해 비워둔다.
         # (result_report처럼 dict.update로 병합되는 항목이나, GUI가 다루지 않는 필드는 그대로 보존됨)
-        for key in ('grid', 'materials', 'particle_generation', 'inlet', 'outlet', 'zone'):
+        managed_keys = ('grid', 'materials', 'particle_generation', 'inlet', 'outlet', 'zone')
+        had_key = {key: solver.data.get(f'config.{key}') is not None for key in managed_keys}
+        for key in managed_keys:
             solver.data.set(f'config.{key}', [])
 
         for prop in self._property_views():
             solver = prop.save_input_file(solver)
+
+        # 원래 없던 항목이고 이번에도 채울 게 없으면, 빈 배열을 남기지 않고 키 자체를 제거
+        # (원본 JSON에 없던 config.inlet: [] 같은 항목이 새로 생기는 것을 방지)
+        for key in managed_keys:
+            if not had_key[key] and not solver.data.get(f'config.{key}'):
+                solver.data.remove(f'config.{key}')
 
         solver.save()
 

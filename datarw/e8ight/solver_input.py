@@ -89,8 +89,6 @@ class SolverData:
         self.data.add('config.particle_generation', {
             "two_dimensional": True,
             "domain_general": True,
-            "path_field": False,
-            "is_manhattan": False,
             "pwb": False,
             "base_dx": 0.4,
             "base_region": {

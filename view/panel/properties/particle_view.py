@@ -19,6 +19,9 @@ class ParticleData:
         self.region_max = [12, 12, 1]
 
         self.segment_data = []
+        # 원본 JSON에서의 particle_generation 배열 인덱스 (binary 항목과 순서를 맞춰 재기록하기 위함).
+        # GUI에서 새로 추가된 항목은 None -> 저장 시 맨 뒤로 감.
+        self.orig_index = None
 
 
 class SegmentData:
@@ -275,11 +278,12 @@ class ParticleView:
 
         for i, p in enumerate(particles):
             if 'binary_path' in p:
-                # GUI에서 편집 불가한 초기 군중 binary 항목은 원본 그대로 보존
-                self._binary_passthrough.append(dict(p))
+                # GUI에서 편집 불가한 초기 군중 binary 항목은 원본 그대로 보존 (원본 순서도 함께 기록)
+                self._binary_passthrough.append((i, dict(p)))
                 continue
 
             d = ParticleData()
+            d.orig_index = i
             d.name = f'gen_{i}'
             d.is_two_dimensional = bool(p.get('two_dimensional', True))
             d.is_domain_general = bool(p.get('domain_general', True))
@@ -335,24 +339,28 @@ class ParticleView:
         return self.ui.widget
 
     def save_input_file(self, solver):
-        for raw in self._binary_passthrough:
-            solver.data.add('config.particle_generation', dict(raw))
+        # binary(passthrough)/domain_general 항목을 원본 particle_generation 배열의 순서 그대로
+        # 다시 섞어 써야 한다 (그렇지 않으면 항목 자체는 안 잃어버려도 순서가 뒤바뀜).
+        # orig_index가 없는(= GUI에서 새로 추가된) 항목은 원본에 없던 것이므로 맨 뒤로 보낸다.
+        entries = [(orig_index, 'binary', raw) for orig_index, raw in self._binary_passthrough]
+        entries += [(d.orig_index, 'domain', d) for d in self.particle_data]
+        entries.sort(key=lambda e: (e[0] is None, e[0] if e[0] is not None else 0))
 
-        # binary passthrough 항목이 리스트 앞쪽을 이미 차지하고 있으므로,
-        # 이 루프에서 새로 append하는 일반 항목의 실제 인덱스는 i가 아니라 offset+i다.
-        # (예전엔 i를 그대로 써서 binary 항목을 일반 항목 필드로 덮어쓰는 버그가 있었음)
-        offset = len(self._binary_passthrough)
-        for i, d in enumerate(self.particle_data):
-            idx = offset + i
+        for _, kind, payload in entries:
+            if kind == 'binary':
+                solver.data.add('config.particle_generation', dict(payload))
+                continue
+
+            d = payload
+            idx = len(solver.data.get('config.particle_generation') or [])
             solver.add_particle_generation(int(d.grid))
 
             solver.data.set(f'config.particle_generation[{idx}].two_dimensional', d.is_two_dimensional)
             solver.data.set(f'config.particle_generation[{idx}].domain_general', d.is_domain_general)
             solver.data.set(f'config.particle_generation[{idx}].pwb', d.pwb)
 
-            solver.data.set(f'config.particle_generation[{idx}].path_field', d.path_field)
             if d.path_field:
-
+                solver.data.set(f'config.particle_generation[{idx}].path_field', d.path_field)
                 solver.data.set(f'config.particle_generation[{idx}].is_manhattan', d.is_manhattan)
 
             solver.data.set(f'config.particle_generation[{idx}].base_dx', float(d.base_dx))
