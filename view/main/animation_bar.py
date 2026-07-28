@@ -21,6 +21,11 @@ from view.main.stick_figure import load_stick_figure, _read_points
 _CACHE_MIN_FREE_MB = 1024
 _CACHE_MIN_FREE_RATIO = 0.15
 
+# 솔버가 결과 파일을 쓴 직후 곧바로 GUI가 그 프레임을 렌더링(OpenGL)하면, 같은 GPU를
+# 쓰는 솔버의 CUDA 작업(특히 결과를 GPU->호스트로 복사하는 시점)과 타이밍이 겹칠 수
+# 있다. 그 순간을 살짝 피하기 위해 새 프레임 렌더링을 이만큼 지연시킨다.
+_SOLVER_RENDER_DELAY_MS = 500
+
 
 class _ClickSlider(QSlider):
     """클릭한 위치로 바로 이동 + 드래그 가능한 슬라이더"""
@@ -257,6 +262,8 @@ class AnimationMixin:
         self._anim_timer.timeout.connect(self._anim_tick)
         self._anim_playing = False
         self._preload_timer = None
+        self._follow_timer = None
+        self._pending_follow_idx = None
 
         return self._anim_bar
 
@@ -420,12 +427,25 @@ class AnimationMixin:
             self._anim_dynamic_grids = self._detect_dynamic_grids()
 
         if self._anim_steps:
-            last_idx = len(self._anim_steps) - 1
-            if self._anim_slider.value() == last_idx:
-                # 같은 값이면 시그널 안 나오므로 직접 호출
-                self._anim_show_step(last_idx)
-            else:
-                self._anim_slider.setValue(last_idx)
+            # 곧바로 렌더링하지 않고 살짝 지연시킨다 (GPU 경합 완화 + 같은 step의
+            # grid0/1/2 파일이 거의 동시에 도착할 때 매번 다시 그리지 않고 한 번만
+            # 그리도록 묶어주는 효과도 있음 -> 새 파일이 더 오면 타이머가 재시작됨).
+            self._pending_follow_idx = len(self._anim_steps) - 1
+            if self._follow_timer is None:
+                self._follow_timer = QTimer()
+                self._follow_timer.setSingleShot(True)
+                self._follow_timer.timeout.connect(self._apply_pending_follow)
+            self._follow_timer.start(_SOLVER_RENDER_DELAY_MS)
+
+    def _apply_pending_follow(self):
+        idx = self._pending_follow_idx
+        if idx is None or not self._anim_steps:
+            return
+        if self._anim_slider.value() == idx:
+            # 같은 값이면 시그널 안 나오므로 직접 호출
+            self._anim_show_step(idx)
+        else:
+            self._anim_slider.setValue(idx)
 
     def _anim_reload(self):
         """결과 파일 다시 스캔"""
