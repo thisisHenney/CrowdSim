@@ -5,7 +5,14 @@
 
 이 문서는 여러 시스템(여러 Claude Code 세션)에서 이어서 작업하기 위한 인계 문서입니다.
 작업을 이어받으면 먼저 `git log --oneline -10` 으로 실제 커밋 이력을 확인하세요 — 아래 목록은
-`804d981` (2026-07-22 기준) 시점까지 반영되어 있습니다.
+`432304c` (2026-07-22 기준) 시점까지 반영되어 있습니다.
+
+**검증 방법**: 실제 E8ight S1~S5 시나리오 JSON을 헤드리스로(QT_QPA_PLATFORM=offscreen) 각 패널의
+`load_input_file`/`save_input_file`에 그대로 통과시켜 원본과 diff하는 방식으로 라운드트립을 검증함.
+`S1_simple_exit.json` 기준으로는 Open→Save가 이제 완전히 byte-level로 동일함(순서 포함). 이 저장소에는
+테스트 스크립트가 커밋되어 있지 않으므로, 다른 시나리오(S2~S5)로 재검증하려면 비슷한 스크립트를 새로
+작성해야 함 (QApplication을 offscreen으로 띄우고, 각 View 클래스를 parent=None으로 인스턴스화한 뒤
+load/save를 그대로 호출하면 됨).
 
 ## 완료된 작업
 
@@ -27,6 +34,13 @@
      보존 후 저장 시 재기록.
    - (후속 수정) binary passthrough 항목과 일반 도메인 항목을 같은 리스트 인덱스로 잘못 써서 서로
      덮어쓰던 버그 수정 — 이제 `offset = len(passthrough)`를 더한 인덱스로 씀.
+   - (추가 후속 수정) 실제 S1 시나리오 JSON으로 byte-level 라운드트립 검증하다가 발견된 3가지 코스메틱
+     차이 수정: ① binary/domain_general 항목이 원본 배열 순서 그대로 나오도록 각 항목에 `orig_index`를
+     기록해 저장 시 원래 순서로 재배치(새로 추가된 항목은 맨 뒤). ② `path_field`가 `False`일 때 원본처럼
+     키 자체를 생략하도록 변경(`add_particle_generation()` 템플릿에서도 `path_field`/`is_manhattan`
+     기본값 제거). ③ `save_input_file()`이 원래 없던 섹션(`config.inlet` 등)에 빈 배열을 새로 만들어
+     넣던 것을 — 원래 있었는지(`had_key`) 기록해뒀다가, 없었고 이번에도 안 채워졌으면 키 자체를 제거하는
+     방식으로 수정. `S1_simple_exit.json` 기준으로 이제 diff 없음.
 
 4. **근본 원인: Run/Save가 매번 빈 템플릿으로 JSON을 재생성하던 구조 수정** (`main_window_view.py`, `solver_input.py`)
    - `save_input_file()`이 이제 기존 JSON을 먼저 로드 후, GUI가 관리하는 리스트(`grid`/`materials`/
