@@ -54,11 +54,13 @@ class SolverRunMixin:
         combo = self.cmd._ui.comboBox_output_proc_index
         self._console_combo_index = combo.count()
         combo.addItem('Console')
-        try:
+        # 처음 연결된 적 없을 때 무조건 disconnect를 시도하면 최신 PySide6에서
+        # RuntimeError 대신 RuntimeWarning만 찍고 넘어가서 try/except로 못 막는다.
+        # 실제로 연결한 적 있을 때만 disconnect 하도록 상태를 직접 추적한다.
+        if getattr(self, '_output_combo_connected', False):
             combo.currentIndexChanged.disconnect(self._on_output_combo_changed)
-        except RuntimeError:
-            pass
         combo.currentIndexChanged.connect(self._on_output_combo_changed)
+        self._output_combo_connected = True
         combo.setCurrentIndex(self._console_combo_index)
 
         # 백그라운드 스레드에서 stdout 읽기
