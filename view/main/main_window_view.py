@@ -573,6 +573,26 @@ class MainWindowView(QMainWindow, AnimationMixin, SolverRunMixin,
         for prop in self._property_views():
             prop.load_input_file(solver)
 
+    def _get_result_output_dir(self):
+        """솔버가 실제로 결과를 쓰는 폴더 경로.
+
+        솔버는 config.result_report.export_path를 프로젝트 폴더 기준 상대경로로 써서
+        그 경로에 결과를 쓴다(예: "results" -> <프로젝트>/results/). GUI의 애니메이션
+        스캔/실행 결과 감시는 예전에 <프로젝트>/<프로젝트명>/ 을 하드코딩해서 보고 있었는데,
+        export_path가 그와 다르면(예: Test123 케이스) 결과를 못 찾는 문제가 있었다.
+        export_path가 없거나 빈 값이면 예전 방식(<프로젝트>/<프로젝트명>/)으로 대체한다.
+        """
+        json_path = Path(rf'{self.prj.path}/{self.prj.name}.json')
+        export_path = ''
+        if json_path.is_file():
+            solver = SolverData()
+            solver.load(json_path)
+            export_path = solver.data.get('config.result_report.export_path') or ''
+
+        if export_path:
+            return Path(self.prj.path) / export_path
+        return Path(self.prj.path) / self.prj.name
+
     def save_input_file(self):
         json_path = Path(rf'{self.prj.path}/{self.prj.name}.json')
 

@@ -77,7 +77,7 @@ class SolverRunMixin:
         self._solver_timer.timeout.connect(self._poll_solver_output)
         self._solver_timer.start(300)
 
-        output_dir = Path(rf'{self.prj.path}/{self.prj.name}')
+        output_dir = self._get_result_output_dir()
         output_dir.mkdir(parents=True, exist_ok=True)
         if self.solver_watcher is not None:
             self.solver_watcher.end()

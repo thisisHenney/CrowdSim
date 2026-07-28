@@ -280,7 +280,7 @@ class AnimationMixin:
         self._anim_files = {}
         self._anim_cache = {}
 
-        result_dir = Path(self.prj.path) / self.prj.name
+        result_dir = self._get_result_output_dir()
         if not result_dir.is_dir():
             self._anim_bar.setVisible(False)
             return
