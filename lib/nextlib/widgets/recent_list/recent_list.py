@@ -1,6 +1,7 @@
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QSizePolicy
 from PySide6.QtWidgets import QLabel, QPushButton, QListWidget, QListWidgetItem
-from PySide6.QtCore import Signal
+from PySide6.QtGui import QFontMetrics
+from PySide6.QtCore import Signal, Qt
 
 from nextlib.utils.ui import load_ui
 from nextlib.tools.json_tool import JsonTool
@@ -34,6 +35,12 @@ class RecentItemWidget(QWidget):
 
         path_label = QLabel(path)
         path_label.setStyleSheet('border: none; color: gray; background: transparent;')
+        # 경로가 길어도 위젯 전체 폭이 늘어나지 않게 하고(그래야 제거 버튼이 항상 보임),
+        # 대신 줄임표로 잘라서 보여준다. 전체 경로는 툴팁으로 확인 가능.
+        path_label.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
+        path_label.setToolTip(path)
+        self._path_label = path_label
+        self._full_path = path
 
         namepath_layout.addWidget(name_label)
         namepath_layout.addWidget(path_label)
@@ -63,6 +70,18 @@ class RecentItemWidget(QWidget):
         self.base_layout.addWidget(self.pushButton_remove)
 
         self.setLayout(self.base_layout)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self._update_path_elide()
+
+    def _update_path_elide(self):
+        available = self._path_label.width()
+        if available <= 0:
+            return
+        fm = QFontMetrics(self._path_label.font())
+        elided = fm.elidedText(self._full_path, Qt.TextElideMode.ElideMiddle, available)
+        self._path_label.setText(elided)
 
     def enterEvent(self, event):
         self.pushButton_remove.setVisible(True)
