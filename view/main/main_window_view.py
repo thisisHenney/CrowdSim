@@ -384,6 +384,11 @@ class MainWindowView(QMainWindow, AnimationMixin, SolverRunMixin,
         self.prj.path = path
         self.prj.name = Path(self.prj.path).name
 
+        # STL 벽/field 메시, 초기 군중 binary 등이 관례적으로 들어가는 폴더.
+        # 새 프로젝트 생성뿐 아니라 기존 케이스를 열 때도 없으면 만들어 둔다(있으면 그대로 둠).
+        make_dir(f'{path}/stl')
+        make_dir(f'{path}/initial')
+
         self._add_recent_project(path)
 
         self.set_defaults_tree()
