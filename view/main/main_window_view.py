@@ -379,16 +379,19 @@ class MainWindowView(QMainWindow, AnimationMixin, SolverRunMixin,
 
         self.set_defaults_tree()
         self.cmd.set_defaults()
+
+        self.setWindowTitle(f'{self.app_info.title} - [{self.prj.path}]')
+        self._ui.statusbar.showMessage('Ready')
+        # VTK 렌더 위젯이 아직 화면에 표시(임베드)되지 않은 상태에서 Render()가 호출되면
+        # "must be a top level window" 경고가 뜨고 첫 프레임이 화면에 반영되지 않는다.
+        # 이후 VTK를 건드리는 호출들보다 반드시 먼저 show()를 호출한다.
+        self.show()
+
         self.set_defaults_vtk()
         self.set_defaults_properties()
         self.load_input_file()
         self._load_background_map()
         self._scan_vtk_results()
-
-        self.setWindowTitle(f'{self.app_info.title} - [{self.prj.path}]')
-        self._ui.statusbar.showMessage('Ready')
-
-        self.show()
 
     def set_defaults_tree(self):
         self.tree.clear_all()
