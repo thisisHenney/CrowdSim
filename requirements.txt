@@ -4,6 +4,7 @@
 PySide6>=6.7
 vtk>=9.3
 numpy
+scipy
 opencv-python
 
 # lib/nextlib(동봉된 nextlib 서브셋)가 필요로 하는 의존성
