@@ -144,7 +144,7 @@ class Ui_MainWindowView(object):
         self.verticalLayout_command = QVBoxLayout(self.dockWidgetContents_command)
         self.verticalLayout_command.setObjectName(u"verticalLayout_command")
         self.dockWidget_command.setWidget(self.dockWidgetContents_command)
-        MainWindowView.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, self.dockWidget_command)
+        MainWindowView.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.dockWidget_command)
         self.dockWidget_properties = QDockWidget(MainWindowView)
         self.dockWidget_properties.setObjectName(u"dockWidget_properties")
         self.dockWidget_properties.setFont(font1)

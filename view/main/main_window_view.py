@@ -56,6 +56,11 @@ class MainWindowView(QMainWindow, AnimationMixin, SolverRunMixin,
 
         self._ui = load_ui(self, Ui_MainWindowView)
 
+        # Run 독을 Properties 아래쪽(오른쪽 하단)에 기본 배치. 저장된 창 레이아웃이
+        # 있으면 _restore_window_state()가 이 기본값을 덮어쓴다.
+        self.splitDockWidget(self._ui.dockWidget_properties, self._ui.dockWidget_command,
+                             Qt.Orientation.Vertical)
+
         self.prop_solverCommon = SolverCommonView(self)
         self.prop_grid = GridView(self)
         self.prop_materials = MaterialsView(self)
