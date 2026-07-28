@@ -6,12 +6,19 @@ self.vtk, self.prj, self._ui (statusbar)
 import re
 from pathlib import Path
 
+import psutil
 from PySide6.QtWidgets import (QFrame, QHBoxLayout, QLabel, QSlider, QToolButton,
                                QStyleOptionSlider, QStyle, QSpinBox, QComboBox)
 from PySide6.QtCore import Qt, QTimer, QPointF, QRectF
 from PySide6.QtGui import QPixmap, QPainter, QColor, QIcon, QPen, QPolygonF
 
 from view.main.stick_figure import load_stick_figure
+
+# 프레임 캐시가 시스템 메모리를 다 먹어치우지 않도록 남겨둘 최소 여유 메모리.
+# (입자 수가 많은 케이스는 프레임 하나가 수백 MB에 달할 수 있어, 전체 프레임을
+#  무제한 캐싱하면 큰 케이스에서 메모리 부족으로 프로세스가 죽는다.)
+_CACHE_MIN_FREE_MB = 1024
+_CACHE_MIN_FREE_RATIO = 0.15
 
 
 class _ClickSlider(QSlider):
@@ -382,12 +389,36 @@ class AnimationMixin:
             self._preload_timer.stop()
             self._preload_timer = None
 
+    def _cache_has_room(self):
+        """캐시에 프레임을 더 담아도 될 만큼 시스템 메모리 여유가 있는지 확인.
+        입자 수가 많은 케이스는 프레임 하나가 수백 MB에 달할 수 있어, 무제한 캐싱하면
+        큰 케이스에서 메모리 부족으로 프로세스가 죽는다 (실제로 재현됨)."""
+        try:
+            vm = psutil.virtual_memory()
+        except Exception:
+            return True  # psutil 조회 실패 시 기존 동작 유지
+
+        min_free = max(_CACHE_MIN_FREE_MB * 1024 * 1024, vm.total * _CACHE_MIN_FREE_RATIO)
+        return vm.available > min_free
+
     def _preload_tick(self):
         """한 프레임씩 캐시에 로드"""
         if not self._preload_queue:
             self._preload_timer.stop()
             self._preload_timer = None
             self._ui.statusbar.showMessage(f'전체 {self._preload_total} 프레임 프리로드 완료')
+            return
+
+        if not self._cache_has_room():
+            # 메모리 여유가 부족하면 프리로드를 여기서 멈춘다. 이미 캐시된 프레임은
+            # 그대로 재생 가능하고, 캐시 안 된 나머지는 재생/이동 시 그때그때 불러온다.
+            done = self._preload_total - len(self._preload_queue)
+            self._preload_queue.clear()
+            self._preload_timer.stop()
+            self._preload_timer = None
+            self._ui.statusbar.showMessage(
+                f'메모리 여유가 부족해 프리로드를 중단했습니다 ({done} / {self._preload_total} 캐시됨). '
+                '나머지 프레임은 재생 시 그때그때 불러옵니다.')
             return
 
         idx = self._preload_queue.pop(0)
@@ -428,7 +459,10 @@ class AnimationMixin:
                 self._ui.statusbar.showMessage('결과 파일을 찾을 수 없습니다. 경로를 확인해주세요.')
                 return
 
-            self._anim_cache[step] = new_actors
+            # 메모리 여유가 부족하면 캐시에 담지 않고 이번 표시에만 사용 (다음에 다시
+            # 방문하면 재로드되지만, 무제한 캐싱으로 인한 메모리 부족 크래시를 막는다)
+            if self._cache_has_room():
+                self._anim_cache[step] = new_actors
 
         cam = self.vtk.renderer.GetActiveCamera()
         cam_pos = cam.GetPosition()
