@@ -9,3 +9,6 @@ opencv-python
 # lib/nextlib(동봉된 nextlib 서브셋)가 필요로 하는 의존성
 psutil
 matplotlib
+
+# 배포용 실행파일 빌드
+pyinstaller
