@@ -75,6 +75,24 @@ load/save를 그대로 호출하면 됨).
 
 9. `requirements.txt`에 `pyinstaller` 추가 (배포용 빌드 대비, 버그 수정과는 무관).
 
+## GUI/성능 관련 추가 수정 (E8ight JSON 이슈와는 별개)
+
+10. **PySide6 `disconnect()` RuntimeWarning** (`solver_runner.py`) — 최신 PySide6는 연결된 적 없는
+    슬롯을 disconnect하면 예외 대신 경고만 찍어서 기존 `try/except RuntimeError`가 못 잡음.
+    `_output_combo_connected` 플래그로 실제 연결 여부를 추적하도록 수정.
+11. **케이스 열 때 애니메이션 첫 프레임이 화면에 안 보이던 문제** (`main_window_view.py`) —
+    `set_defaults()`가 `self.show()`보다 먼저 `set_defaults_vtk()`/`_load_background_map()`/
+    `_scan_vtk_results()`(전부 VTK `Render()` 호출)를 실행해서, 창이 화면에 뜨기 전에 렌더링을
+    시도해 `"must be a top level window"` 경고가 뜨고 첫 프레임이 반영 안 됐음. `self.show()`를
+    VTK 관련 호출들보다 앞으로 이동.
+12. **`stick_figure.py` numpy/scipy 벡터화** — 결과 프레임 하나에 입자가 수만 개(실측 17900개)라
+    파이썬 순수 반복문(밀집도 계산 + 스틱피겨 지오메트리 생성)이 느렸음. `scipy.spatial.cKDTree`로
+    밀집도 이웃 검색, numpy 배열 연산 + `vtk.util.numpy_support`로 VTK 점/셀을 일괄 생성하도록 재작성.
+    기존 구현과 결과 동일함을 검증(세그먼트 순서만 다르고 좌표는 완전 일치), 프레임당 약 3.9배 빠름
+    (2.73s → 0.70s). 남은 시간은 VTK 자체의 튜브/구체 지오메트리 생성 비용이라 추가 파이썬 최적화로는
+    못 줄임 — 더 빠르게 하려면 튜브 옆면 수·구체 해상도를 낮추는 등 시각적 디테일 트레이드오프 필요.
+    `requirements.txt`에 `scipy` 추가됨.
+
 ## 남은 작업
 
 - **`outlet.sig_k`/`sig_x`/`settle_radius`, `initial_outlet_id`/`exit_ratio`(S5) GUI 편집 UI 없음** —
