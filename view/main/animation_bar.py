@@ -350,13 +350,29 @@ class AnimationMixin:
         return {g: p for g, p in files.items() if g in self._anim_dynamic_grids}
 
     def _set_2d_view(self):
-        """카메라를 기본 뷰로 설정 (X 오른쪽, Y 위쪽, Z 앞쪽)"""
+        """카메라를 기본 뷰로 설정 (X 오른쪽, Y 위쪽, Z 앞쪽)
+
+        벽/path_field 같은 정적 grid를 애니메이션에서 제외한 뒤로는, 화면에 실제로
+        보이는 액터가 (군중이 적거나 한쪽에 몰린) 특정 프레임의 작은 일부뿐일 수 있다.
+        보이는 액터 기준으로 ResetCamera()를 하면 카메라가 그 작은 영역에만 맞춰져서,
+        군중이 이동/증가하면 화면 밖으로 벗어난 것처럼 보인다. 그래서 가능하면 grid
+        도메인 전체를 기준으로 카메라를 잡아 원점·전체 이동 범위가 항상 보이게 한다."""
         cam = self.vtk.renderer.GetActiveCamera()
         cam.ParallelProjectionOff()
-        cam.SetPosition(0, 0, 1)
-        cam.SetFocalPoint(0, 0, 0)
         cam.SetViewUp(0, 1, 0)
-        self.vtk.renderer.ResetCamera()
+
+        d_min, d_max = self._get_domain() if hasattr(self, '_get_domain') else (None, None)
+        if d_min is not None and d_max is not None:
+            cx = (d_min[0] + d_max[0]) / 2
+            cy = (d_min[1] + d_max[1]) / 2
+            cam.SetFocalPoint(cx, cy, 0)
+            cam.SetPosition(cx, cy, 1)
+            self.vtk.renderer.ResetCamera(d_min[0], d_max[0], d_min[1], d_max[1], -1, 1)
+        else:
+            cam.SetPosition(0, 0, 1)
+            cam.SetFocalPoint(0, 0, 0)
+            self.vtk.renderer.ResetCamera()
+
         self.vtk.vtk_widget.GetRenderWindow().Render()
 
     def update_solver_file(self, file_name, added_files, removed_files):
