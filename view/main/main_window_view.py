@@ -67,6 +67,9 @@ class MainWindowView(QMainWindow, AnimationMixin, SolverRunMixin,
         self.prop_export = ExportView(self)
 
         self.tree = TreeWidget(widget=self._ui.treeWidget)
+        # TreeWidget이 컬럼 헤더를 항상 보이게 강제하는데, 이 트리는 단일 컬럼이라
+        # "설정" 헤더 한 줄이 그냥 큰 타이틀처럼 떠 있는 것처럼 보여서 숨긴다.
+        self._ui.treeWidget.header().setVisible(False)
         self.vtk = VtkWidgetBase(self)
         # 불필요한 버튼 숨기기
         for attr in ('_action_select_all', '_action_deselect',

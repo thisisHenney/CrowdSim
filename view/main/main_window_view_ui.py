@@ -112,7 +112,7 @@ class Ui_MainWindowView(object):
         self.dockWidget_settings = QDockWidget(MainWindowView)
         self.dockWidget_settings.setObjectName(u"dockWidget_settings")
         font1 = QFont()
-        font1.setPointSize(9)
+        font1.setPointSize(10)
         font1.setBold(True)
         self.dockWidget_settings.setFont(font1)
         self.dockWidgetContents = QWidget()

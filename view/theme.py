@@ -467,7 +467,7 @@ QDockWidget::title {{
     color: {T('DIM')};
     border-bottom: 1px solid {T('BORDER')};
     padding: 5px 8px;
-    font-size: 9pt;
+    font-size: 10pt;
     font-weight: 600;
 }}
 

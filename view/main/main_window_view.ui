@@ -142,7 +142,7 @@ QMainWindow::separator{
   <widget class="QDockWidget" name="dockWidget_settings">
    <property name="font">
     <font>
-     <pointsize>9</pointsize>
+     <pointsize>10</pointsize>
      <bold>true</bold>
     </font>
    </property>
@@ -200,7 +200,7 @@ QMainWindow::separator{
   <widget class="QDockWidget" name="dockWidget_command">
    <property name="font">
     <font>
-     <pointsize>9</pointsize>
+     <pointsize>10</pointsize>
      <bold>true</bold>
     </font>
    </property>
@@ -217,7 +217,7 @@ QMainWindow::separator{
   <widget class="QDockWidget" name="dockWidget_properties">
    <property name="font">
     <font>
-     <pointsize>9</pointsize>
+     <pointsize>10</pointsize>
      <bold>true</bold>
     </font>
    </property>
