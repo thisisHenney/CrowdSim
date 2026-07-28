@@ -70,10 +70,19 @@ class MainWindowView(QMainWindow, AnimationMixin, SolverRunMixin,
         self.vtk = VtkWidgetBase(self)
         # 불필요한 버튼 숨기기
         for attr in ('_action_select_all', '_action_deselect',
-                     '_geom_visible_action', '_mesh_visible_action', '_both_visible_action'):
+                     '_geom_visible_action', '_mesh_visible_action', '_both_visible_action',
+                     '_axes_action', '_ruler_action'):
             act = getattr(self.vtk, attr, None)
             if act is not None:
                 act.setVisible(False)
+
+        # 축 표시(원점 HUD)/눈금자(Ruler)는 결과 애니메이션 좌표와 무관하게 화면 구석에
+        # 표시되거나 결과 데이터 바운딩 박스에 안 맞는 거대한 텍스트로 나와 혼란만 주므로,
+        # 버튼을 숨기는 것과 별개로 항상 꺼진 상태로 유지한다.
+        if self.vtk.axes is not None:
+            self.vtk.axes.hide()
+        if self.vtk.ruler is not None:
+            self.vtk.ruler.hide()
         # 툴바 툴팁 항상 표시 (포커스 없어도)
         self.vtk.setAttribute(Qt.WidgetAttribute.WA_AlwaysShowToolTips, True)
 

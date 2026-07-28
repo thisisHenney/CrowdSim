@@ -51,6 +51,10 @@ class SolverRunMixin:
         self.action_stop.setEnabled(True)
         self._solver_output_buf = ''
 
+        # 솔버가 자체적으로 %진행률을 안 알려주므로, 실행 중임을 눈에 보이게(계속 움직이는
+        # 부정형 진행바) 표시한다. 안 그러면 화면이 멈춘 건지 실행 중인지 구분이 안 된다.
+        self._set_solver_progress(running=True)
+
         combo = self.cmd._ui.comboBox_output_proc_index
         self._console_combo_index = combo.count()
         combo.addItem('Console')
@@ -144,10 +148,13 @@ class SolverRunMixin:
             exit_code = self._solver_proc.returncode
             if exit_code is not None and exit_code == 0:
                 self.cmd.add_log_notice('Solver completed')
+                self._set_solver_progress(running=False, text='완료', value=100)
             elif exit_code is not None:
                 self.cmd.add_log_error(0, f'Solver stopped (exit code: {exit_code})')
+                self._set_solver_progress(running=False, text='중지됨', value=0)
             else:
                 self.cmd.add_log_notice('Solver finished')
+                self._set_solver_progress(running=False, text='완료', value=100)
             self._solver_proc = None
             self.action_run.setEnabled(True)
             self.action_stop.setEnabled(False)
@@ -180,7 +187,22 @@ class SolverRunMixin:
             self.cmd.add_log_notice('Solver stopped by user')
             self.action_run.setEnabled(True)
             self.action_stop.setEnabled(False)
+            self._set_solver_progress(running=False, text='중지됨', value=0)
 
         if self.solver_watcher is not None:
             self.solver_watcher.end()
             self.solver_watcher = None
+
+    def _set_solver_progress(self, running, text='', value=0):
+        """솔버 진행 상태를 진행바에 표시. 퍼센트를 모르므로 실행 중엔 부정형(계속 움직임)으로
+        보여줘서, 로그를 안 봐도 실행 중인지 멈췄는지 한눈에 알 수 있게 한다."""
+        pb = getattr(self.cmd, '_progressbar', None)
+        if pb is None:
+            return
+        if running:
+            pb.setRange(0, 0)
+            pb.setFormat('실행 중...')
+        else:
+            pb.setRange(0, 100)
+            pb.setValue(value)
+            pb.setFormat(text)
