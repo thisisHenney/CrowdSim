@@ -6,7 +6,7 @@ from pathlib import Path
 
 from PySide6.QtWidgets import (QMainWindow, QFrame, QVBoxLayout, QHBoxLayout, QMenu, QDialog,
                                QLabel, QPushButton, QTextBrowser, QLineEdit, QFileDialog,
-                               QMessageBox, QApplication)
+                               QMessageBox, QApplication, QSlider)
 from PySide6.QtCore import QSize, QSettings, Qt, QPointF, QTimer
 from PySide6.QtGui import (QAction, QCursor, QPixmap, QPainter, QColor, QIcon,
                            QPen, QPolygonF)
@@ -110,6 +110,7 @@ class MainWindowView(QMainWindow, AnimationMixin, SolverRunMixin,
         self._solver_proc = None
         self._bg_map_actor = None
         self._bg_overlay_actor = None
+        self._bg_dim_level = 0.4
 
         self._initialize()
 
@@ -372,7 +373,21 @@ class MainWindowView(QMainWindow, AnimationMixin, SolverRunMixin,
         self.action_bg_map.setToolTip('배경 지도 이미지 불러오기')
         self._ui.toolBar.addAction(self.action_bg_map)
 
+        self._bg_dim_slider = QSlider(Qt.Orientation.Horizontal)
+        self._bg_dim_slider.setFixedWidth(80)
+        self._bg_dim_slider.setRange(0, 90)
+        self._bg_dim_slider.setValue(int(self._bg_dim_level * 100))
+        self._bg_dim_slider.setToolTip('배경 지도 밝기 (오른쪽으로 갈수록 어둡게)')
+        self._bg_dim_slider.valueChanged.connect(self._on_bg_dim_changed)
+        self._ui.toolBar.addWidget(self._bg_dim_slider)
+
         self._ui.toolBar.actionTriggered.connect(self._clicked_toolbar_button)
+
+    def _on_bg_dim_changed(self, value):
+        self._bg_dim_level = value / 100.0
+        if self._bg_overlay_actor is not None:
+            self._bg_overlay_actor.GetProperty().SetOpacity(self._bg_dim_level)
+            self.vtk.vtk_widget.GetRenderWindow().Render()
 
     def _clicked_toolbar_button(self, action):
         if action == self.action_file_new:

@@ -141,7 +141,7 @@ class BackgroundMapMixin:
         overlay_actor = vtk.vtkActor()
         overlay_actor.SetMapper(overlay_mapper)
         overlay_actor.GetProperty().SetColor(0, 0, 0)
-        overlay_actor.GetProperty().SetOpacity(0.4)
+        overlay_actor.GetProperty().SetOpacity(getattr(self, '_bg_dim_level', 0.4))
 
         self._remove_background_actors()
 

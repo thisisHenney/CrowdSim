@@ -67,6 +67,3 @@ if __name__ == '__main__':
     crowd = Crowd()
     crowd.start(start_path)
     app.exec()
-
-
-
