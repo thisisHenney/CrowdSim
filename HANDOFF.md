@@ -5,7 +5,7 @@
 
 이 문서는 여러 시스템(여러 Claude Code 세션)에서 이어서 작업하기 위한 인계 문서입니다.
 작업을 이어받으면 먼저 `git log --oneline -10` 으로 실제 커밋 이력을 확인하세요 — 아래 목록은
-`432304c` (2026-07-22 기준) 시점까지 반영되어 있습니다.
+`cd7baec` (2026-07-28 기준) 시점까지 반영되어 있습니다.
 
 **검증 방법**: 실제 E8ight S1~S5 시나리오 JSON을 헤드리스로(QT_QPA_PLATFORM=offscreen) 각 패널의
 `load_input_file`/`save_input_file`에 그대로 통과시켜 원본과 diff하는 방식으로 라운드트립을 검증함.
@@ -99,6 +99,35 @@ load/save를 그대로 호출하면 됨).
     여유 메모리(전체의 15% 또는 최소 1GB 중 큰 쪽)를 확인해서, 부족하면 프리로드를 멈추고(이미
     캐시된 프레임은 재생 가능) 그 이후 프레임은 캐시하지 않고 방문할 때마다 그때그때 로드하도록
     수정. 같은 케이스로 재검증 시 메모리가 약 21GB에서 더 안 늘고 안정적으로 유지됨을 확인.
+14. **벽/path_field 같은 정적 grid를 애니메이션에서 제외** (`animation_bar.py`) — grid0(벽,
+    17900개 고정)·grid2(path_field, 76561개 고정)까지 전부 걷는 사람으로 그려서, 실제 움직이는
+    군중(grid1, 최대 수백 개)이 정적인 "사람들"에 파묻혀 화면이 빽빽한 벽지처럼 보였음. 첫 프레임과
+    마지막 프레임의 좌표를 비교해서 실제로 움직이는 grid만 애니메이션에 포함하도록 수정
+    (`_detect_dynamic_grids()`).
+15. **애니메이션 카메라가 도메인 전체가 아니라 보이는 액터 기준으로 맞춰지던 문제** (`animation_bar.py`)
+    — 정적 grid를 뺀 뒤로는 첫 프레임의 작은/한쪽에 몰린 군중만 화면에 있어서 카메라가 거기에만
+    맞춰짐 → 군중이 늘어나면 화면 밖으로 벗어난 것처럼 보임. `_set_2d_view()`가 grid 도메인 전체
+    기준으로 카메라를 맞추도록 수정.
+16. **Axes(원점 HUD)/Ruler 툴바 버튼 제거** — Ruler(vtkCubeAxesActor)가 작은 바운딩 박스에 큰
+    폰트로 렌더링되어 화면을 뒤덮는 텍스트로 나오는 등, 결과 좌표와 무관한 오버레이가 혼란만 줌.
+    `main_window_view.py`에서 두 버튼을 숨기고 강제로 꺼둠.
+17. **솔버 실행 중 진행 상태를 알 수 없던 문제** (`solver_runner.py`) — RuntimeSPH2D가 %진행률을
+    안 주고, solver_runner가 ExecWidget의 배치 진행률 추적을 안 거쳐서 진행바가 항상 0%로 고정.
+    실행 중엔 부정형(계속 움직이는) 진행바로, 종료 시 완료/중지됨으로 표시하도록 수정.
+18. **`result_report.export_path`를 실제로 읽어서 결과 폴더 위치를 찾도록 수정** (`main_window_view.py`,
+    `animation_bar.py`, `solver_runner.py`) — 솔버는 JSON의 `export_path`(프로젝트 폴더 기준
+    상대경로)에 결과를 실제로 쓰는데, GUI의 애니메이션 스캔·솔버 실행 감시는 `<프로젝트>/<프로젝트명>/`을
+    하드코딩해서 보고 있었음. 실제 케이스(`export_path: "results/Test123"`)로 확인된 문제.
+    `MainWindowView._get_result_output_dir()`을 추가해 JSON의 `export_path`를 읽어 해석하고,
+    없으면(신규 프로젝트 등) 예전 방식으로 대체하도록 통일.
+19. **케이스 폴더 생성/열기 시 `stl/`, `initial/` 폴더 자동 생성** (`main_window_view.py`) —
+    `mesh_path`/`binary_path` 관례 경로가 있어도 안 만들어졌음. `set_defaults()`에서 없으면 생성.
+20. **시작 다이얼로그에서 없는 최근 프로젝트 경로 클릭 시 크래시** — `messagebox_warning(parent, text)`이
+    title 인자를 안 받는데 3개 인자로 호출해서 `TypeError`. `start_dialog.py`/`recent_list.py` 둘 다 수정.
+21. **최근 프로젝트 목록에서 경로가 길면 제거(x) 버튼이 화면 밖으로 밀리던 문제** — 경로 라벨을
+    말줄임(elide) 처리해서 위젯 폭을 리스트 뷰포트 안으로 고정 (`recent_list.py`).
+22. **Ctrl+C 시 지저분한 `KeyboardInterrupt` 트레이스백** (`main.py`) — SIGINT 핸들러 등록 +
+    항상 도는 빈 QTimer로 시그널이 빨리 반영되도록 수정.
 
 ## 남은 작업
 
