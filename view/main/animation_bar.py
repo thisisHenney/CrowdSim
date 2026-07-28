@@ -427,9 +427,9 @@ class AnimationMixin:
             self._anim_dynamic_grids = self._detect_dynamic_grids()
 
         if self._anim_steps:
-            # 곧바로 렌더링하지 않고 살짝 지연시킨다 (GPU 경합 완화 + 같은 step의
-            # grid0/1/2 파일이 거의 동시에 도착할 때 매번 다시 그리지 않고 한 번만
-            # 그리도록 묶어주는 효과도 있음 -> 새 파일이 더 오면 타이머가 재시작됨).
+            # 곧바로 렌더링하지 않고 살짝 지연시킨다: 같은 step의 grid0/1/2 파일이
+            # 거의 동시에 도착할 때 매번 다시 그리지 않고 한 번만 그리도록 묶어줌
+            # (새 파일이 더 오면 타이머가 재시작됨).
             self._pending_follow_idx = len(self._anim_steps) - 1
             if self._follow_timer is None:
                 self._follow_timer = QTimer()
