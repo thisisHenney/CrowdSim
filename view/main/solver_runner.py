@@ -30,15 +30,9 @@ class SolverRunMixin:
         self._anim_reset()
         self._load_background_map()
 
-        working_path = str(self.prj.path)
-
-        # 진단용: 케이스 폴더 안에 솔버 exe/DLL을 복사해뒀을 때, CrowdSim 내장 사본
-        # 대신 그걸 쓰도록 임시로 전환 (exe가 cwd와 같은 폴더에 있을 때 차이가 있는지 확인).
-        if os.environ.get('CROWDSIM_SOLVER_FROM_CASE_FOLDER') == '1':
-            solver_exe = str(Path(working_path) / 'RuntimeSPH2D.exe')
-        else:
-            solver_exe = str(self.app_info.path / 'solver/e8ight/RuntimeSPH2D/RuntimeSPH2D.exe')
+        solver_exe = str(self.app_info.path / 'solver/e8ight/RuntimeSPH2D/RuntimeSPH2D.exe')
         json_rel = f'.\\{self.prj.name}.json'
+        working_path = str(self.prj.path)
 
         popen_kwargs = dict(
             cwd=working_path,
