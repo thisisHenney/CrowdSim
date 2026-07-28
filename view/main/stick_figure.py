@@ -11,12 +11,19 @@
 import math
 import re
 import struct
+import time
 from pathlib import Path
 
 import numpy as np
 import vtk
 from scipy.spatial import cKDTree
 from vtk.util.numpy_support import numpy_to_vtk, numpy_to_vtkIdTypeArray
+
+# 솔버가 결과 파일을 쓰는 도중(특히 Windows) DirectoryWatcher가 변경을 감지하자마자
+# 열려고 하면 아직 파일이 잠겨 있어 PermissionError가 날 수 있다. 쓰기가 막 끝난
+# 시점이라 아주 짧게 재시도하면 대부분 바로 풀린다.
+_OPEN_RETRIES = 5
+_OPEN_RETRY_DELAY = 0.05  # 초
 
 # 스틱피겨 치수
 H = 2.0          # 키
@@ -38,9 +45,26 @@ COLOR_STOPS = [
 _FIELD_TYPE_SIZES = {'unsigned_char': 1, 'float': 4, 'int': 4}
 
 
+def _open_with_retry(filepath):
+    """읽기 잠금이 풀릴 때까지 짧게 재시도하며 연다. 계속 실패하면 마지막 예외를 던진다."""
+    last_err = None
+    for _ in range(_OPEN_RETRIES):
+        try:
+            return open(filepath, 'rb')
+        except (PermissionError, OSError) as e:
+            last_err = e
+            time.sleep(_OPEN_RETRY_DELAY)
+    raise last_err
+
+
 def _read_points(filepath):
     """바이너리 legacy VTK에서 (positions (N,2) float64 배열, rest_bytes) 반환. 실패 시 (None, None)"""
-    with open(filepath, 'rb') as f:
+    try:
+        f = _open_with_retry(filepath)
+    except (PermissionError, OSError):
+        return None, None
+
+    with f:
         # POINTS 라인을 찾을 때까지 헤더 스캔 (고정 줄 수 가정 제거)
         points_line = None
         for _ in range(20):
