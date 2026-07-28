@@ -4,7 +4,6 @@
 # Build / Distribution
 dist/
 build/
-*.spec
 
 # Solver binaries
 solver/
