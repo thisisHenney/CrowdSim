@@ -203,7 +203,7 @@ class VtkWidgetBase(QMainWindow):
 
         self._axes_action = self._add_toggle_action(
             "Axes", "axes_on.png", "axes_off.png",
-            self._on_axes_toggled, checked=True
+            self._on_axes_toggled, checked=False
         )
 
         self._ruler_action = self._add_toggle_action(
