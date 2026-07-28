@@ -247,7 +247,7 @@ class AnimationMixin:
         # 결과 유무와 무관하게 VTK 화면 아래 항상 표시하고, 재생할 결과가 없을 때만
         # 비활성화(회색 처리)한다 (숨기지 않음).
         self._anim_bar.setVisible(True)
-        self._anim_bar.setEnabled(False)
+        self._set_anim_controls_enabled(False)
 
         self._anim_steps = []
         self._anim_files = {}
@@ -259,6 +259,12 @@ class AnimationMixin:
         self._preload_timer = None
 
         return self._anim_bar
+
+    def _set_anim_controls_enabled(self, enabled):
+        """재생 컨트롤 전체를 켜고 끈다. '결과 다시 읽기' 버튼은 결과가 없을 때
+        그걸 확인/재시도할 유일한 방법이라 항상 눌리는 상태로 둔다."""
+        self._anim_bar.setEnabled(enabled)
+        self._btn_anim_reload.setEnabled(True)
 
     def _anim_reset(self):
         """애니메이션 상태와 컨트롤을 초기 상태로 되돌림"""
@@ -274,7 +280,7 @@ class AnimationMixin:
         self._anim_spin.setValue(0)
         self._anim_spin.blockSignals(False)
         self._anim_total_label.setText('/ 0')
-        self._anim_bar.setEnabled(False)
+        self._set_anim_controls_enabled(False)
 
     def _scan_vtk_results(self):
         """케이스 열 때 기존 VTK 결과 파일 스캔"""
@@ -285,7 +291,7 @@ class AnimationMixin:
 
         result_dir = self._get_result_output_dir()
         if not result_dir.is_dir():
-            self._anim_bar.setEnabled(False)
+            self._set_anim_controls_enabled(False)
             return
 
         for vtk_file in result_dir.glob('*.vtk'):
@@ -309,12 +315,12 @@ class AnimationMixin:
             self._anim_spin.setMaximum(total)
             self._anim_total_label.setText(f'/ {total}')
             self._anim_slider.setValue(0)
-            self._anim_bar.setEnabled(True)
+            self._set_anim_controls_enabled(True)
             self._anim_show_step(0)
             self._set_2d_view()
             self._anim_preload()
         else:
-            self._anim_bar.setEnabled(False)
+            self._set_anim_controls_enabled(False)
 
     def _detect_dynamic_grids(self):
         """벽·path_field 같은 정적 배경 그리드(솔버 grid 파일이지만 실제로는 안 움직임)를
@@ -406,7 +412,7 @@ class AnimationMixin:
                 self._anim_slider.setTickInterval(max(1, total // 2))
                 self._anim_spin.setMaximum(total)
                 self._anim_total_label.setText(f'/ {total}')
-                self._anim_bar.setEnabled(True)
+                self._set_anim_controls_enabled(True)
 
         if len(self._anim_steps) >= 2:
             # 프레임이 쌓일수록(솔버가 실행 중일 때도) 벽·path_field 같은 정적 grid를
