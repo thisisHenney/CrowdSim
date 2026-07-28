@@ -5,6 +5,7 @@ self.app_info, self.prj, self.cmd, self.vtk, self.action_run, self.action_stop,
 self.solver_watcher, self._anim_reset(), self._load_background_map(),
 self.save_input_file(), self.update_solver_file()
 """
+import os
 import queue
 import re
 import subprocess
@@ -33,18 +34,24 @@ class SolverRunMixin:
         json_rel = f'.\\{self.prj.name}.json'
         working_path = str(self.prj.path)
 
-        si = subprocess.STARTUPINFO()
-        si.dwFlags = subprocess.STARTF_USESHOWWINDOW
-        si.wShowWindow = 0  # SW_HIDE: 콘솔 창 숨김
-
-        self._solver_proc = subprocess.Popen(
-            [solver_exe, json_rel],
+        popen_kwargs = dict(
             cwd=working_path,
-            startupinfo=si,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
-            creationflags=subprocess.CREATE_NO_WINDOW
         )
+
+        # 진단용: 터미널에서는 되는데 GUI로 실행하면 CUDA illegal address가 나는 문제를
+        # 조사 중. 콘솔 숨김(STARTF_USESHOWWINDOW+SW_HIDE, CREATE_NO_WINDOW)이 터미널
+        # 실행과의 가장 큰 차이라 이 환경변수로 그 부분만 빼고 테스트할 수 있게 해둔다.
+        # CROWDSIM_SOLVER_SHOW_CONSOLE=1 로 켜면 솔버 콘솔 창이 그대로 보인다.
+        if os.environ.get('CROWDSIM_SOLVER_SHOW_CONSOLE') != '1':
+            si = subprocess.STARTUPINFO()
+            si.dwFlags = subprocess.STARTF_USESHOWWINDOW
+            si.wShowWindow = 0  # SW_HIDE: 콘솔 창 숨김
+            popen_kwargs['startupinfo'] = si
+            popen_kwargs['creationflags'] = subprocess.CREATE_NO_WINDOW
+
+        self._solver_proc = subprocess.Popen([solver_exe, json_rel], **popen_kwargs)
 
         self.cmd.add_log_notice(f'Solver started: {self.prj.name}.json')
         self.action_run.setEnabled(False)
