@@ -4,9 +4,9 @@ import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
-from PySide6.QtWidgets import (QMainWindow, QFrame, QVBoxLayout, QHBoxLayout, QMenu, QDialog,
+from PySide6.QtWidgets import (QMainWindow, QFrame, QVBoxLayout, QHBoxLayout, QFormLayout, QMenu, QDialog,
                                QLabel, QPushButton, QTextBrowser, QLineEdit, QFileDialog,
-                               QMessageBox, QApplication, QSlider)
+                               QMessageBox, QApplication, QSlider, QDoubleSpinBox, QDialogButtonBox)
 from PySide6.QtCore import QSize, QSettings, Qt, QPointF, QTimer
 from PySide6.QtGui import (QAction, QCursor, QPixmap, QPainter, QColor, QIcon,
                            QPen, QPolygonF)
@@ -56,9 +56,9 @@ class MainWindowView(QMainWindow, AnimationMixin, SolverRunMixin,
 
         self._ui = load_ui(self, Ui_MainWindowView)
 
-        # Run 독을 Properties 아래쪽(오른쪽 하단)에 기본 배치. 저장된 창 레이아웃이
+        # Run 독을 Settings 아래쪽(왼쪽 하단)에 기본 배치. 저장된 창 레이아웃이
         # 있으면 _restore_window_state()가 이 기본값을 덮어쓴다.
-        self.splitDockWidget(self._ui.dockWidget_properties, self._ui.dockWidget_command,
+        self.splitDockWidget(self._ui.dockWidget_settings, self._ui.dockWidget_command,
                              Qt.Orientation.Vertical)
 
         self.prop_solverCommon = SolverCommonView(self)
@@ -111,6 +111,11 @@ class MainWindowView(QMainWindow, AnimationMixin, SolverRunMixin,
         self._bg_map_actor = None
         self._bg_overlay_actor = None
         self._bg_dim_level = 0.4
+        # 지도 이미지는 그냥 불러와서 도메인 사각형에 늘려 표시하는 것뿐이라, 실제 STL
+        # 형상과 좌표가 안 맞을 수 있다. STL(솔버가 실제로 쓰는 좌표) 기준으로 지도 쪽을
+        # 수동으로 옮기고 늘릴 수 있게 오프셋/배율을 둔다.
+        self._bg_map_offset = [0.0, 0.0]
+        self._bg_map_scale = [1.0, 1.0]
 
         self._initialize()
 
@@ -373,6 +378,10 @@ class MainWindowView(QMainWindow, AnimationMixin, SolverRunMixin,
         self.action_bg_map.setToolTip('배경 지도 이미지 불러오기')
         self._ui.toolBar.addAction(self.action_bg_map)
 
+        self.action_bg_map_adjust = QAction(create_icon(str(self._icon_path / 'preferences.png')), '지도 위치 조정', self)
+        self.action_bg_map_adjust.setToolTip('지도 위치/크기 조정 (STL 기준으로 맞추기)')
+        self._ui.toolBar.addAction(self.action_bg_map_adjust)
+
         self._bg_dim_slider = QSlider(Qt.Orientation.Horizontal)
         self._bg_dim_slider.setFixedWidth(80)
         self._bg_dim_slider.setRange(0, 90)
@@ -402,6 +411,61 @@ class MainWindowView(QMainWindow, AnimationMixin, SolverRunMixin,
             self.stop_solver()
         elif action == self.action_bg_map:
             self._select_background_map()
+        elif action == self.action_bg_map_adjust:
+            self._open_bg_map_adjust_dialog()
+
+    def _open_bg_map_adjust_dialog(self):
+        dlg = QDialog(self)
+        dlg.setWindowTitle('지도 위치/크기 조정')
+
+        offset_x = QDoubleSpinBox()
+        offset_x.setRange(-1e7, 1e7)
+        offset_x.setDecimals(2)
+        offset_x.setValue(self._bg_map_offset[0])
+
+        offset_y = QDoubleSpinBox()
+        offset_y.setRange(-1e7, 1e7)
+        offset_y.setDecimals(2)
+        offset_y.setValue(self._bg_map_offset[1])
+
+        scale_x = QDoubleSpinBox()
+        scale_x.setRange(0.01, 100.0)
+        scale_x.setDecimals(3)
+        scale_x.setSingleStep(0.05)
+        scale_x.setValue(self._bg_map_scale[0])
+
+        scale_y = QDoubleSpinBox()
+        scale_y.setRange(0.01, 100.0)
+        scale_y.setDecimals(3)
+        scale_y.setSingleStep(0.05)
+        scale_y.setValue(self._bg_map_scale[1])
+
+        def apply_values():
+            self._bg_map_offset = [offset_x.value(), offset_y.value()]
+            self._bg_map_scale = [scale_x.value(), scale_y.value()]
+            self._load_background_map(reset_camera=False)
+
+        offset_x.valueChanged.connect(apply_values)
+        offset_y.valueChanged.connect(apply_values)
+        scale_x.valueChanged.connect(apply_values)
+        scale_y.valueChanged.connect(apply_values)
+
+        form = QFormLayout()
+        form.addRow('X 오프셋 :', offset_x)
+        form.addRow('Y 오프셋 :', offset_y)
+        form.addRow('가로 배율 :', scale_x)
+        form.addRow('세로 배율 :', scale_y)
+
+        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
+        buttons.rejected.connect(dlg.close)
+        buttons.accepted.connect(dlg.close)
+
+        layout = QVBoxLayout(dlg)
+        layout.addLayout(form)
+        layout.addWidget(buttons)
+
+        dlg.exec()
+        self._save_bg_map_view()
 
     def set_defaults(self, path):
         self.prj.path = path
@@ -427,6 +491,7 @@ class MainWindowView(QMainWindow, AnimationMixin, SolverRunMixin,
         self.set_defaults_vtk()
         self.set_defaults_properties()
         self.load_input_file()
+        self._load_bg_map_view()
         self._load_background_map()
         self._scan_vtk_results()
 

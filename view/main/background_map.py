@@ -3,6 +3,7 @@
 MainWindowView에 믹스인으로 결합된다. 사용하는 호스트 속성:
 self.vtk, self.prj, self.prop_grid
 """
+import json
 import shutil
 from pathlib import Path
 
@@ -13,6 +14,43 @@ from datarw.e8ight.solver_input import SolverData
 
 class BackgroundMapMixin:
     """케이스 map/ 폴더의 지도 이미지를 도메인 좌표에 맞춰 표시"""
+
+    def _bg_map_view_file(self):
+        """지도 오프셋/배율은 솔버 설정이 아니라 GUI 전용 값이라 케이스 JSON과
+        섞지 않고 map/ 폴더에 별도 사이드카 파일로 둔다."""
+        if not self.prj.path:
+            return None
+        return Path(self.prj.path) / 'map' / 'map_view.json'
+
+    def _load_bg_map_view(self):
+        """프로젝트를 열 때 오프셋/배율을 케이스별로 다시 불러오거나 기본값으로 초기화"""
+        self._bg_map_offset = [0.0, 0.0]
+        self._bg_map_scale = [1.0, 1.0]
+
+        path = self._bg_map_view_file()
+        if path is None or not path.is_file():
+            return
+        try:
+            data = json.loads(path.read_text(encoding='utf-8'))
+            offset = data.get('offset', [0.0, 0.0])
+            self._bg_map_offset = [float(offset[0]), float(offset[1])]
+
+            scale = data.get('scale', [1.0, 1.0])
+            # 예전 버전은 배율이 가로/세로 구분 없는 숫자 하나였으므로 하위 호환 처리
+            if isinstance(scale, (int, float)):
+                self._bg_map_scale = [float(scale), float(scale)]
+            else:
+                self._bg_map_scale = [float(scale[0]), float(scale[1])]
+        except (OSError, ValueError, TypeError, KeyError, IndexError, json.JSONDecodeError):
+            pass
+
+    def _save_bg_map_view(self):
+        path = self._bg_map_view_file()
+        if path is None:
+            return
+        path.parent.mkdir(parents=True, exist_ok=True)
+        data = {'offset': list(self._bg_map_offset), 'scale': list(self._bg_map_scale)}
+        path.write_text(json.dumps(data, indent=2), encoding='utf-8')
 
     def _select_background_map(self):
         """사용자가 배경 이미지를 선택하여 케이스 map/ 폴더에 복사 후 로드"""
@@ -85,7 +123,7 @@ class BackgroundMapMixin:
             self.vtk.renderer.RemoveActor(self._bg_overlay_actor)
             self._bg_overlay_actor = None
 
-    def _load_background_map(self, image_path=None):
+    def _load_background_map(self, image_path=None, reset_camera=True):
         """배경 지도 이미지를 VTK 렌더러에 로드"""
         import vtk
 
@@ -101,6 +139,21 @@ class BackgroundMapMixin:
         if d_min is None or d_max is None:
             return
 
+        # 지도 이미지는 그냥 불러와서 도메인 사각형에 늘려 표시하는 것뿐이라, 실제 STL
+        # (translate 적용된 솔버 좌표) 기준과 안 맞을 수 있다. 도메인 중심을 기준으로
+        # 배율을 적용한 뒤 오프셋만큼 옮겨서, STL 위치에 수동으로 맞출 수 있게 한다.
+        offset = getattr(self, '_bg_map_offset', [0.0, 0.0])
+        scale = getattr(self, '_bg_map_scale', [1.0, 1.0])
+        cx = (d_min[0] + d_max[0]) / 2.0
+        cy = (d_min[1] + d_max[1]) / 2.0
+
+        def _xy(x, y):
+            return (cx + (x - cx) * scale[0] + offset[0], cy + (y - cy) * scale[1] + offset[1])
+
+        p_min = _xy(d_min[0], d_min[1])
+        p_max_x = _xy(d_max[0], d_min[1])
+        p_max_y = _xy(d_min[0], d_max[1])
+
         suffix = Path(map_file).suffix.lower()
         if suffix in ('.jpg', '.jpeg'):
             reader = vtk.vtkJPEGReader()
@@ -112,9 +165,9 @@ class BackgroundMapMixin:
         reader.Update()
 
         plane = vtk.vtkPlaneSource()
-        plane.SetOrigin(d_min[0], d_min[1], -1.0)
-        plane.SetPoint1(d_max[0], d_min[1], -1.0)
-        plane.SetPoint2(d_min[0], d_max[1], -1.0)
+        plane.SetOrigin(p_min[0], p_min[1], -1.0)
+        plane.SetPoint1(p_max_x[0], p_max_x[1], -1.0)
+        plane.SetPoint2(p_max_y[0], p_max_y[1], -1.0)
         plane.Update()
 
         texture = vtk.vtkTexture()
@@ -133,9 +186,9 @@ class BackgroundMapMixin:
         # z-buffer 정밀도가 부족해 카메라를 회전시켰을 때 두 평면이 z-fighting을 일으켜
         # 오버레이가 지도에 가려지고 밝기 조절이 안 먹는 것처럼 보인다. 충분히 띄운다.
         overlay_plane = vtk.vtkPlaneSource()
-        overlay_plane.SetOrigin(d_min[0], d_min[1], -0.5)
-        overlay_plane.SetPoint1(d_max[0], d_min[1], -0.5)
-        overlay_plane.SetPoint2(d_min[0], d_max[1], -0.5)
+        overlay_plane.SetOrigin(p_min[0], p_min[1], -0.5)
+        overlay_plane.SetPoint1(p_max_x[0], p_max_x[1], -0.5)
+        overlay_plane.SetPoint2(p_max_y[0], p_max_y[1], -0.5)
         overlay_plane.Update()
 
         overlay_mapper = vtk.vtkPolyDataMapper()
@@ -152,5 +205,6 @@ class BackgroundMapMixin:
         self._bg_overlay_actor = overlay_actor
         self.vtk.renderer.AddActor(actor)
         self.vtk.renderer.AddActor(overlay_actor)
-        self.vtk.renderer.ResetCamera()
+        if reset_camera:
+            self.vtk.renderer.ResetCamera()
         self.vtk.vtk_widget.GetRenderWindow().Render()

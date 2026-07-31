@@ -299,8 +299,12 @@ class DropDown(QWidget):
             self.item_list[index].close_button()
 
     def scroll_to_item(self, index):
-        """열림/닫힘 상태는 건드리지 않고, 해당 항목을 뷰포트 맨 위로 이동만 시킨다"""
-        self._scroll_item_to_top(index, 0)
+        """열림/닫힘 상태는 건드리지 않고, 해당 항목을 뷰포트 맨 위로 이동만 시킨다.
+        직전에 show_all()/show_only()로 다른 항목들의 visible 상태가 바뀌었을 수 있는데,
+        그 레이아웃 재계산이 끝나기 전에 item.y()를 읽으면 옛 위치로 스크롤돼버린다
+        (특히 대상 항목이 이미 펼쳐진 상태일 때 두드러짐). open_item()과 마찬가지로
+        약간 지연시켜 레이아웃이 안정된 뒤 위치를 읽는다."""
+        self._scroll_item_to_top(index, 20)
 
     def _scroll_item_to_top(self, index, delay):
         if not (0 <= index < len(self.item_list)):

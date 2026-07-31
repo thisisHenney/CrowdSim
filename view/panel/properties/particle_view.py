@@ -50,6 +50,9 @@ class ParticleView:
         self._mesh_preview_actors = []
         # mesh_select로 방금 고른(아직 추가/저장 전인) 파일의 미리보기 액터
         self._mesh_pending_actor = None
+        # mesh_select로 방금 고른 파일에 대해 자동 계산한 translate([x,y]).
+        # 추가/저장 시 이 값을 세그먼트에 실어 보낸다 (translate 편집 UI가 없어서).
+        self._pending_mesh_translate = None
 
         self._initialize()
 
@@ -61,6 +64,9 @@ class ParticleView:
         ui.pushButton_save.clicked.connect(self._clicked_save)
         ui.pushButton_remove.clicked.connect(self._clicked_remove)
 
+        # .ui 기본값이 비활성(False)인데, particle_generation 항목이 하나라도 있으면
+        # 처음부터 세그먼트 이름을 편집할 수 있어야 하므로 항상 켜둔다.
+        ui.comboBox_segment_name.setEnabled(True)
         ui.comboBox_segment_name.currentIndexChanged.connect(self._changed_combo_segment_name)
         ui.pushButton_segment_add.clicked.connect(self._clicked_segment_add)
         ui.pushButton_segment_save.clicked.connect(self._clicked_segment_save)
@@ -131,6 +137,7 @@ class ParticleView:
         # segment_data 자체는 change_data()에서 particle 항목 단위로 한꺼번에 미리보기하므로,
         # 여기서는 방금 선택했을 뿐 아직 추가/저장 안 된(pending) 미리보기만 정리한다.
         self._clear_pending_mesh_preview()
+        self._pending_mesh_translate = None
 
         if segment_index == -1:
             ui.checkBox_interval_normal.setChecked(SegmentData().invert_normal)
@@ -159,8 +166,6 @@ class ParticleView:
             self.particle_data.append(get_data)
             ui.comboBox_name.addItem(get_data.name)
             ui.comboBox_name.setCurrentIndex(len(self.particle_data) - 1)
-
-            self.ui.comboBox_segment_name.setEnabled(True)
 
     def get_cur_data(self, get_data=None):
         ui = self.ui
@@ -241,6 +246,12 @@ class ParticleView:
         get_data.mesh_path = ui.lineEdit_segment_mesh_path.text()
         get_data.material = ui.comboBox_segment_material.currentText()
         get_data.region_type = ui.comboBox_segment_region_type.currentText()
+
+        # mesh_select로 방금 새 파일을 골랐을 때만 자동 계산된 translate를 반영한다.
+        # (translate 편집 UI가 없어서, 기존 항목을 그냥 저장할 때는 원래 값을 그대로 둔다)
+        if self._pending_mesh_translate is not None:
+            get_data.translate = list(self._pending_mesh_translate)
+            self._pending_mesh_translate = None
 
         return get_data
 
@@ -356,8 +367,7 @@ class ParticleView:
         src = Path(get_file)
         project_path = getattr(getattr(self._parent, 'prj', None), 'path', None)
         if not project_path:
-            self.ui.lineEdit_segment_mesh_path.setText(str(src))
-            self._preview_pending_mesh(str(src))
+            self._apply_mesh_selection(str(src))
             return
 
         stl_dir = Path(project_path) / 'stl'
@@ -368,7 +378,7 @@ class ParticleView:
             box.setWindowTitle('파일 이름 중복')
             box.setText(f"stl 폴더에 이미 '{src.name}' 파일이 있습니다.\n어떻게 하시겠습니까?")
             overwrite_btn = box.addButton('덮어쓰기', QMessageBox.ButtonRole.AcceptRole)
-            keep_btn = box.addButton('복사 안 함(원본 경로 사용)', QMessageBox.ButtonRole.DestructiveRole)
+            keep_btn = box.addButton('복사 안하고 기존 폴더 사용', QMessageBox.ButtonRole.DestructiveRole)
             cancel_btn = box.addButton('취소', QMessageBox.ButtonRole.RejectRole)
             box.setDefaultButton(cancel_btn)
             box.exec()
@@ -377,8 +387,8 @@ class ParticleView:
             if clicked == cancel_btn:
                 return
             if clicked == keep_btn:
-                self.ui.lineEdit_segment_mesh_path.setText(str(src))
-                self._preview_pending_mesh(str(src))
+                # 새로 고른 파일은 복사하지 않고, stl 폴더에 이미 있던 파일을 그대로 쓴다.
+                self._apply_mesh_selection(f'stl/{dest.name}')
                 return
             # overwrite_btn -> 아래에서 복사 진행
 
@@ -386,9 +396,41 @@ class ParticleView:
         if dest.resolve() != src.resolve():
             shutil.copy2(src, dest)
 
-        rel_path = f'stl/{dest.name}'
-        self.ui.lineEdit_segment_mesh_path.setText(rel_path)
-        self._preview_pending_mesh(rel_path)
+        self._apply_mesh_selection(f'stl/{dest.name}')
+
+    def _apply_mesh_selection(self, rel_or_abs_path):
+        self.ui.lineEdit_segment_mesh_path.setText(rel_or_abs_path)
+        # translate를 편집하는 UI가 없으므로, 방금 고른 STL의 원본 좌표 중심이 도메인
+        # 중심에 오도록 translate를 자동 계산해서 채워둔다 (안 그러면 STL의 실측
+        # 좌표(수십만 단위)가 그대로 남아 도메인/지도와 동떨어진 곳에 위치하게 된다).
+        self._pending_mesh_translate = self._compute_auto_translate(rel_or_abs_path)
+        self._preview_pending_mesh(rel_or_abs_path)
+
+    def _compute_auto_translate(self, mesh_path):
+        get_domain = getattr(self._parent, '_get_domain', None)
+        if get_domain is None:
+            return None
+        d_min, d_max = get_domain()
+        if d_min is None or d_max is None:
+            return None
+
+        resolved = self._resolve_mesh_path(mesh_path)
+        if not resolved.is_file():
+            return None
+
+        import vtk
+        reader = vtk.vtkSTLReader()
+        reader.SetFileName(str(resolved))
+        reader.Update()
+        bounds = reader.GetOutput().GetBounds()
+        if any(b != b for b in bounds):  # NaN 체크 (빈 폴리데이터 등)
+            return None
+
+        stl_cx = (bounds[0] + bounds[1]) / 2.0
+        stl_cy = (bounds[2] + bounds[3]) / 2.0
+        dom_cx = (d_min[0] + d_max[0]) / 2.0
+        dom_cy = (d_min[1] + d_max[1]) / 2.0
+        return [dom_cx - stl_cx, dom_cy - stl_cy]
 
     def _resolve_mesh_path(self, mesh_path):
         path = Path(mesh_path)
@@ -422,6 +464,12 @@ class ParticleView:
             ty = float(translate[1]) if len(translate) > 1 else 0.0
             tz = float(translate[2]) if len(translate) > 2 else 0.0
             actor.SetPosition(tx, ty, tz)
+
+        # translate가 아직 없는(새로 추가했거나 저장 전인) 세그먼트는 원본 STL의 실측
+        # 좌표(수십만 단위)에 그대로 남아있을 수 있다. 이런 액터가 카메라 fit/reset
+        # 계산에 끼면 도메인/지도가 점처럼 작아져 사실상 안 보이게 되므로, 미리보기
+        # 액터는 (위치가 맞든 안 맞든) 항상 카메라 bounds 계산에서 제외한다.
+        actor.SetUseBounds(False)
         return actor
 
     def _preview_segments(self, particle_index):
@@ -447,7 +495,7 @@ class ParticleView:
         """mesh_select로 방금 고른(아직 추가/저장 전인) 파일을 추가로 미리보기"""
         self._clear_pending_mesh_preview()
         vtk = getattr(self._parent, 'vtk', None)
-        actor = self._load_mesh_actor(mesh_path)
+        actor = self._load_mesh_actor(mesh_path, self._pending_mesh_translate)
         if vtk is None or actor is None:
             return
 
