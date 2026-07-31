@@ -1,3 +1,8 @@
+from pathlib import Path
+import shutil
+
+from PySide6.QtWidgets import QMessageBox
+
 from nextlib.utils.ui import load_ui
 from view.panel.properties.particle_ui import Ui_ParticleForm
 
@@ -41,6 +46,10 @@ class ParticleView:
 
         self.particle_data = []
         self._binary_passthrough = []
+        # 현재 선택된 particle_generation 항목에 속한 모든 segment(벽/field 등)의 미리보기 액터
+        self._mesh_preview_actors = []
+        # mesh_select로 방금 고른(아직 추가/저장 전인) 파일의 미리보기 액터
+        self._mesh_pending_actor = None
 
         self._initialize()
 
@@ -86,6 +95,7 @@ class ParticleView:
             ui.lineEdit_region_max_y.setText('')
 
             self.change_segment_data(-1)
+            self._preview_segments(-1)
 
         else:
             cur_data = self.particle_data[index]
@@ -106,6 +116,7 @@ class ParticleView:
             ui.lineEdit_region_max_y.setText(str(cur_data.region_max[1]))
 
             self.change_segment_data(0)
+            self._preview_segments(index)
 
     def _changed_combo_segment_name(self, segment_index):
         self.change_segment_data(segment_index)
@@ -116,6 +127,10 @@ class ParticleView:
         particle_index = ui.comboBox_name.currentIndex()
         segment_index = segment_index if self.particle_data[particle_index].segment_data and (0 <= segment_index < len(self.particle_data[particle_index].segment_data)) else (
             len(self.particle_data[particle_index].segment_data) - 1 if len(self.particle_data[particle_index].segment_data) > 0 else -1)
+
+        # segment_data 자체는 change_data()에서 particle 항목 단위로 한꺼번에 미리보기하므로,
+        # 여기서는 방금 선택했을 뿐 아직 추가/저장 안 된(pending) 미리보기만 정리한다.
+        self._clear_pending_mesh_preview()
 
         if segment_index == -1:
             ui.checkBox_interval_normal.setChecked(SegmentData().invert_normal)
@@ -215,6 +230,7 @@ class ParticleView:
             self.particle_data[index].segment_data.append(get_data)
             ui.comboBox_segment_name.addItem(get_data.name)
             ui.comboBox_segment_name.setCurrentIndex(len(self.particle_data[index].segment_data) - 1)
+            self._preview_segments(index)
 
     def get_cur_segment_data(self, get_data=None):
         ui = self.ui
@@ -242,6 +258,7 @@ class ParticleView:
 
         self.change_segment_combo_text(ui.comboBox_segment_name, segment_index, cur_data.name)
         self.get_cur_segment_data(cur_data)
+        self._preview_segments(particle_index)
 
     def change_segment_combo_text(self, combo, index, text):
         combo.blockSignals(True)
@@ -264,6 +281,7 @@ class ParticleView:
         if segment_index < len(self.particle_data[particle_index].segment_data):
             del self.particle_data[particle_index].segment_data[segment_index]
             self.change_segment_data(segment_index)
+            self._preview_segments(particle_index)
 
     def load_input_file(self, solver):
         ui = self.ui
@@ -332,8 +350,126 @@ class ParticleView:
 
         filters = 'stl (*.stl);;All file (*.*)'
         get_file = FileDialogBox.open_file(self._parent, filters=filters)
-        if get_file:
-            self.ui.lineEdit_segment_mesh_path.setText(get_file)
+        if not get_file:
+            return
+
+        src = Path(get_file)
+        project_path = getattr(getattr(self._parent, 'prj', None), 'path', None)
+        if not project_path:
+            self.ui.lineEdit_segment_mesh_path.setText(str(src))
+            self._preview_pending_mesh(str(src))
+            return
+
+        stl_dir = Path(project_path) / 'stl'
+        dest = stl_dir / src.name
+
+        if dest.exists() and dest.resolve() != src.resolve():
+            box = QMessageBox(self._parent)
+            box.setWindowTitle('파일 이름 중복')
+            box.setText(f"stl 폴더에 이미 '{src.name}' 파일이 있습니다.\n어떻게 하시겠습니까?")
+            overwrite_btn = box.addButton('덮어쓰기', QMessageBox.ButtonRole.AcceptRole)
+            keep_btn = box.addButton('복사 안 함(원본 경로 사용)', QMessageBox.ButtonRole.DestructiveRole)
+            cancel_btn = box.addButton('취소', QMessageBox.ButtonRole.RejectRole)
+            box.setDefaultButton(cancel_btn)
+            box.exec()
+            clicked = box.clickedButton()
+
+            if clicked == cancel_btn:
+                return
+            if clicked == keep_btn:
+                self.ui.lineEdit_segment_mesh_path.setText(str(src))
+                self._preview_pending_mesh(str(src))
+                return
+            # overwrite_btn -> 아래에서 복사 진행
+
+        stl_dir.mkdir(parents=True, exist_ok=True)
+        if dest.resolve() != src.resolve():
+            shutil.copy2(src, dest)
+
+        rel_path = f'stl/{dest.name}'
+        self.ui.lineEdit_segment_mesh_path.setText(rel_path)
+        self._preview_pending_mesh(rel_path)
+
+    def _resolve_mesh_path(self, mesh_path):
+        path = Path(mesh_path)
+        if path.is_absolute():
+            return path
+        project_path = getattr(getattr(self._parent, 'prj', None), 'path', None)
+        if project_path:
+            return Path(project_path) / path
+        return path
+
+    def _load_mesh_actor(self, mesh_path, translate=None):
+        vtk = getattr(self._parent, 'vtk', None)
+        if vtk is None or not mesh_path:
+            return None
+
+        resolved = self._resolve_mesh_path(mesh_path)
+        if not resolved.is_file():
+            return None
+
+        from nextlib.vtk.core.mesh_loader import MeshLoader
+        actor = MeshLoader().load_stl(resolved)
+        if actor is None:
+            return None
+
+        actor.GetProperty().SetOpacity(0.5)
+        # 솔버는 mesh_path의 STL 원본 좌표에 translate를 더해서 도메인 안으로 옮겨 배치하므로
+        # (원본 STL이 실측 좌표계 등 큰 좌표를 쓰는 경우가 많음), 미리보기도 똑같이 옮겨야
+        # 배경 지도/도메인과 위치가 맞는다. 안 옮기면 화면 밖 먼 곳에 그려져 사실상 안 보인다.
+        if translate:
+            tx = float(translate[0]) if len(translate) > 0 else 0.0
+            ty = float(translate[1]) if len(translate) > 1 else 0.0
+            tz = float(translate[2]) if len(translate) > 2 else 0.0
+            actor.SetPosition(tx, ty, tz)
+        return actor
+
+    def _preview_segments(self, particle_index):
+        """현재 선택된 particle_generation 항목에 속한 모든 segment(벽/field 등) 형상을
+        한꺼번에 뷰포트에 미리보기 (segment 콤보를 옮겨도 이전에 추가된 형상이 안 사라지게)"""
+        vtk = getattr(self._parent, 'vtk', None)
+        for actor in self._mesh_preview_actors:
+            if vtk is not None:
+                vtk.renderer.RemoveActor(actor)
+        self._mesh_preview_actors = []
+
+        if vtk is not None and 0 <= particle_index < len(self.particle_data):
+            for seg in self.particle_data[particle_index].segment_data:
+                actor = self._load_mesh_actor(seg.mesh_path, seg.translate)
+                if actor is not None:
+                    vtk.renderer.AddActor(actor)
+                    self._mesh_preview_actors.append(actor)
+
+        if vtk is not None:
+            vtk.vtk_widget.GetRenderWindow().Render()
+
+    def _preview_pending_mesh(self, mesh_path):
+        """mesh_select로 방금 고른(아직 추가/저장 전인) 파일을 추가로 미리보기"""
+        self._clear_pending_mesh_preview()
+        vtk = getattr(self._parent, 'vtk', None)
+        actor = self._load_mesh_actor(mesh_path)
+        if vtk is None or actor is None:
+            return
+
+        vtk.renderer.AddActor(actor)
+        self._mesh_pending_actor = actor
+        vtk.vtk_widget.GetRenderWindow().Render()
+
+    def _clear_pending_mesh_preview(self):
+        vtk = getattr(self._parent, 'vtk', None)
+        if vtk is not None and self._mesh_pending_actor is not None:
+            vtk.renderer.RemoveActor(self._mesh_pending_actor)
+            vtk.vtk_widget.GetRenderWindow().Render()
+        self._mesh_pending_actor = None
+
+    def _clear_mesh_preview(self):
+        """프로젝트를 새로 열 때 등, 미리보기 전체를 정리"""
+        vtk = getattr(self._parent, 'vtk', None)
+        for actor in self._mesh_preview_actors:
+            if vtk is not None:
+                vtk.renderer.RemoveActor(actor)
+        self._mesh_preview_actors = []
+        self._clear_pending_mesh_preview()
 
     def get_widget(self):
         return self.ui.widget

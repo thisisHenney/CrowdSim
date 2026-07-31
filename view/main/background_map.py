@@ -112,9 +112,9 @@ class BackgroundMapMixin:
         reader.Update()
 
         plane = vtk.vtkPlaneSource()
-        plane.SetOrigin(d_min[0], d_min[1], -0.01)
-        plane.SetPoint1(d_max[0], d_min[1], -0.01)
-        plane.SetPoint2(d_min[0], d_max[1], -0.01)
+        plane.SetOrigin(d_min[0], d_min[1], -1.0)
+        plane.SetPoint1(d_max[0], d_min[1], -1.0)
+        plane.SetPoint2(d_min[0], d_max[1], -1.0)
         plane.Update()
 
         texture = vtk.vtkTexture()
@@ -129,10 +129,13 @@ class BackgroundMapMixin:
         actor.SetTexture(texture)
 
         # 지도 위 반투명 어두운 오버레이 (입자 대비 강화)
+        # 지도와 z 차이가 너무 작으면(예: 0.01 vs 0.005) 도메인 크기(수백 단위)에 비해
+        # z-buffer 정밀도가 부족해 카메라를 회전시켰을 때 두 평면이 z-fighting을 일으켜
+        # 오버레이가 지도에 가려지고 밝기 조절이 안 먹는 것처럼 보인다. 충분히 띄운다.
         overlay_plane = vtk.vtkPlaneSource()
-        overlay_plane.SetOrigin(d_min[0], d_min[1], -0.005)
-        overlay_plane.SetPoint1(d_max[0], d_min[1], -0.005)
-        overlay_plane.SetPoint2(d_min[0], d_max[1], -0.005)
+        overlay_plane.SetOrigin(d_min[0], d_min[1], -0.5)
+        overlay_plane.SetPoint1(d_max[0], d_min[1], -0.5)
+        overlay_plane.SetPoint2(d_min[0], d_max[1], -0.5)
         overlay_plane.Update()
 
         overlay_mapper = vtk.vtkPolyDataMapper()

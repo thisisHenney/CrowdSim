@@ -471,6 +471,7 @@ class MainWindowView(QMainWindow, AnimationMixin, SolverRunMixin,
         self._stop_preload()
         self.vtk.obj_manager.all().remove()
         self._remove_background_actors()
+        self.prop_particle._clear_mesh_preview()
         self._anim_reset()
         self.vtk.vtk_widget.GetRenderWindow().Render()
 
