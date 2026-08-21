@@ -25,6 +25,7 @@ from view.main.animation_bar import AnimationMixin
 from view.main.solver_runner import SolverRunMixin
 from view.main.video_export import VideoExportMixin
 from view.main.background_map import BackgroundMapMixin
+from view.main.scenario_dock import ScenarioDockMixin
 
 from view.panel.properties.solver_common_view import SolverCommonView
 from view.panel.properties.grid_view import GridView
@@ -47,7 +48,7 @@ class ProjectInfor:
 
 
 class MainWindowView(QMainWindow, AnimationMixin, SolverRunMixin,
-                     VideoExportMixin, BackgroundMapMixin):
+                     VideoExportMixin, BackgroundMapMixin, ScenarioDockMixin):
     def __init__(self, app_info):
         super().__init__()
 
@@ -60,6 +61,7 @@ class MainWindowView(QMainWindow, AnimationMixin, SolverRunMixin,
         # 있으면 _restore_window_state()가 이 기본값을 덮어쓴다.
         self.splitDockWidget(self._ui.dockWidget_settings, self._ui.dockWidget_command,
                              Qt.Orientation.Vertical)
+        self._init_scenario_dock()
 
         self.prop_solverCommon = SolverCommonView(self)
         self.prop_grid = GridView(self)

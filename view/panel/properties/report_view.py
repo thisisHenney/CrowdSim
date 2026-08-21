@@ -1,5 +1,6 @@
 from nextlib.utils.ui import load_ui
 from view.panel.properties.report_ui import Ui_ReportForm
+from view.panel.properties import _extra_ui
 
 
 # 실제 솔버(RuntimeSPH2D)가 쓰는 result_report.items/flags 스키마 (S1~S5 실전 시나리오 기준).
@@ -54,6 +55,20 @@ class ReportView:
     def _initialize(self):
         ui = self.ui
 
+        self._build_extra_fields()
+
+    def _build_extra_fields(self):
+        """결과 출력 경로 입력란을 덧붙인다 (uic 출력에 없음).
+
+        프로젝트 폴더 기준 상대경로다. 비워 두면 솔버·GUI 모두 예전 방식인
+        `<프로젝트>/<프로젝트명>/`을 쓴다.
+        """
+        ui = self.ui
+
+        ui.lineEdit_export_path = _extra_ui.make_edit(placeholder='예: results/S1_simple_exit')
+        ui.verticalLayout_5.addWidget(
+            _extra_ui.make_row('결과 경로', ui.lineEdit_export_path))
+
     def get_widget(self):
         return self.ui.widget
 
@@ -61,6 +76,7 @@ class ReportView:
         ui = self.ui
 
         solver.add_result_report()
+        solver.data.set('config.result_report.export_path', ui.lineEdit_export_path.text().strip())
         solver.data.set('config.result_report.save_start_time', float(ui.lineEdit_start_time.text()))
         solver.data.set('config.result_report.save_end_time', float(ui.lineEdit_end_time.text()))
         solver.data.set('config.result_report.save_time_interval', float(ui.lineEdit_time_interval.text()))
@@ -93,9 +109,9 @@ class ReportView:
 
     def load_input_file(self, solver):
         ui = self.ui
-        rr = solver.data.get('config.result_report')
-        if not rr:
-            return
+        # 섹션이 없으면 빈 dict로 진행해 기본값으로 되돌린다
+        # (이전 프로젝트 값이 남지 않게)
+        rr = solver.data.get('config.result_report') or {}
 
         def s(key, default=''):
             v = rr.get(key)
@@ -104,6 +120,7 @@ class ReportView:
         ui.lineEdit_start_time.setText(s('save_start_time', '0.0'))
         ui.lineEdit_end_time.setText(s('save_end_time', '100'))
         ui.lineEdit_time_interval.setText(s('save_time_interval', '0.1'))
+        ui.lineEdit_export_path.setText(s('export_path', ''))
 
         items = rr.get('items', {})
         ui.checkBox_pressure.setChecked(bool(items.get('pressure', True)))

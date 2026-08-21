@@ -20,6 +20,8 @@ a = Analysis(
         # 번들 안에서도 nextlib/... 경로에 있어야 코드의 __file__ 기준 아이콘 조회가 맞는다.
         ('lib/nextlib/widgets/icons', 'nextlib/widgets/icons'),
         ('lib/nextlib/vtk/res', 'nextlib/vtk/res'),
+        # Scenario 독의 Common 프리셋 JSON - app_info.path 기준 경로로 읽음
+        ('datarw/e8ight/presets', 'datarw/e8ight/presets'),
     ],
     hiddenimports=[],
     hookspath=[],

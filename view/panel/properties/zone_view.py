@@ -136,6 +136,12 @@ class ZoneView:
         ui = self.ui
         zones = solver.data.get('config.zone')
         if not zones:
+            # 섹션이 비어 있으면 이전 프로젝트 값이 남지 않도록 비운다
+            ui.comboBox_name.blockSignals(True)
+            self.zone_data.clear()
+            ui.comboBox_name.clear()
+            ui.comboBox_name.blockSignals(False)
+            self.change_data(-1)
             return
 
         ui.comboBox_name.blockSignals(True)
@@ -190,6 +196,9 @@ class ZoneView:
             solver.add_zone(d.zone_type)
 
             solver.data.set(f'config.zone[{i}]._comment', d.comment)
+            # add_zone이 심은 zone_type은 첫 zone에서만 뒤이은 set()에 지워진다.
+            # (JsonTool.add가 리스트 첫 원소를 dict로 넣어, set의 인덱스 접근이 이를 비운다)
+            solver.data.set(f'config.zone[{i}].zone_type', d.zone_type)
             solver.data.set(f'config.zone[{i}].p1[0]', float(d.p1[0]))
             solver.data.set(f'config.zone[{i}].p1[1]', float(d.p1[1]))
             solver.data.set(f'config.zone[{i}].p2[0]', float(d.p2[0]))

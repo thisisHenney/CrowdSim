@@ -320,6 +320,10 @@ class TreeWidget(QObject):
     def clear_all(self):
         self.widget.clear()
         self._editing = False
+        # widget.clear()는 C++ 쪽 QTreeWidgetItem을 지운다. 파이썬 래퍼가
+        # 이 집합에 남아 있으면 다음 add()에서 비교하다가
+        # "Internal C++ object already deleted"로 죽는다.
+        self._not_editable_items.clear()
 
     def remove_item(self, pos: list):
         if not pos:

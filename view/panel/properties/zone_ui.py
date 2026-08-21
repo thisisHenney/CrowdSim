@@ -3,7 +3,7 @@
 ################################################################################
 ## Form generated from reading UI file 'zone.ui'
 ##
-## Created by: Qt User Interface Compiler version 6.10.0
+## Created by: Qt User Interface Compiler version 6.11.1
 ##
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
@@ -195,7 +195,6 @@ class Ui_ZoneForm(object):
 
         self.lineEdit_direction_x = QLineEdit(self.groupBox_4)
         self.lineEdit_direction_x.setObjectName(u"lineEdit_direction_x")
-        self.lineEdit_direction_x.setEnabled(False)
         self.lineEdit_direction_x.setMaximumSize(QSize(100, 16777215))
         self.lineEdit_direction_x.setFont(font)
         self.lineEdit_direction_x.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -210,7 +209,6 @@ class Ui_ZoneForm(object):
 
         self.lineEdit_direction_y = QLineEdit(self.groupBox_4)
         self.lineEdit_direction_y.setObjectName(u"lineEdit_direction_y")
-        self.lineEdit_direction_y.setEnabled(False)
         self.lineEdit_direction_y.setMaximumSize(QSize(100, 16777215))
         self.lineEdit_direction_y.setFont(font)
         self.lineEdit_direction_y.setAlignment(Qt.AlignmentFlag.AlignCenter)

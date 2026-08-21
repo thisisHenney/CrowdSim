@@ -1,5 +1,6 @@
 from nextlib.utils.ui import load_ui
 from view.panel.properties.inlet_ui import Ui_InletForm
+from view.panel.properties import _extra_ui
 
 
 _KNOWN_INLET_KEYS = {'name', 'type', 'exclude_outlets', 'p1', 'p2', 'velocity', 'dx',
@@ -41,6 +42,21 @@ class InletView:
         ui.pushButton_save.clicked.connect(self._clicked_save)
         ui.pushButton_remove.clicked.connect(self._clicked_remove)
 
+        self._build_extra_fields()
+
+    def _build_extra_fields(self):
+        """uic 출력에 없는 입력란을 덧붙인다 (유입 시작/종료 시각, 제외 출구)."""
+        ui = self.ui
+
+        ui.lineEdit_start_time = _extra_ui.make_edit()
+        ui.lineEdit_end_time = _extra_ui.make_edit()
+        ui.lineEdit_exclude_outlets = _extra_ui.make_edit(placeholder='예: 2, 3')
+
+        form = ui.formLayout
+        form.addRow('유입 시작 시각', ui.lineEdit_start_time)
+        form.addRow('유입 종료 시각', ui.lineEdit_end_time)
+        form.addRow('제외 출구 번호', ui.lineEdit_exclude_outlets)
+
     def _changed_combo_name(self, index):
         if index == -1:
             return
@@ -66,6 +82,10 @@ class InletView:
             ui.lineEdit_grid.setText('0')
             ui.lineEdit_outlet_index.setText('0')
 
+            ui.lineEdit_start_time.setText('0')
+            ui.lineEdit_end_time.setText('0')
+            ui.lineEdit_exclude_outlets.setText('')
+
         else:
             cur_data = self.inlet_data[index]
 
@@ -82,6 +102,11 @@ class InletView:
             ui.lineEdit_material_index.setText(str(cur_data.material_index))
             ui.lineEdit_grid.setText(str(cur_data.grid))
             ui.lineEdit_outlet_index.setText(str(cur_data.outlet_index))
+
+            ui.lineEdit_start_time.setText(_extra_ui.format_num(cur_data.start_time))
+            ui.lineEdit_end_time.setText(_extra_ui.format_num(cur_data.end_time))
+            ui.lineEdit_exclude_outlets.setText(
+                _extra_ui.format_int_list(cur_data.exclude_outlets))
 
     def _clicked_add(self):
         self.add_data()
@@ -125,6 +150,11 @@ class InletView:
         get_data.grid = ui.lineEdit_grid.text()
         get_data.outlet_index = ui.lineEdit_outlet_index.text()
 
+        get_data.start_time = _extra_ui.parse_num(ui.lineEdit_start_time.text(), 0)
+        get_data.end_time = _extra_ui.parse_num(ui.lineEdit_end_time.text(), 0)
+        get_data.exclude_outlets = _extra_ui.parse_int_list(
+            ui.lineEdit_exclude_outlets.text())
+
         return get_data
 
     def save_data(self, index=-1):
@@ -143,6 +173,12 @@ class InletView:
         ui = self.ui
         inlets = solver.data.get('config.inlet')
         if not inlets:
+            # 섹션이 비어 있으면 이전 프로젝트 값이 남지 않도록 비운다
+            ui.comboBox_name.blockSignals(True)
+            self.inlet_data.clear()
+            ui.comboBox_name.clear()
+            ui.comboBox_name.blockSignals(False)
+            self.change_data(-1)
             return
 
         ui.comboBox_name.blockSignals(True)
@@ -199,7 +235,14 @@ class InletView:
             solver.add_inlet()
 
             solver.data.set(f'config.inlet[{i}].name', d.name)
-            solver.data.set(f'config.inlet[{i}].exclude_outlets', getattr(d, 'exclude_outlets', []))
+
+            # 비어 있으면 키를 만들지 않는다 (원본 json에 없던 항목이 저장만으로
+            # 생기면 참조 파일과 어긋난다)
+            exclude_outlets = getattr(d, 'exclude_outlets', [])
+            if exclude_outlets:
+                solver.data.set(f'config.inlet[{i}].exclude_outlets', exclude_outlets)
+            else:
+                solver.data.remove(f'config.inlet[{i}].exclude_outlets')
 
             solver.data.set(f'config.inlet[{i}].p1[0]', float(d.p1[0]))
             solver.data.set(f'config.inlet[{i}].p1[1]', float(d.p1[1]))

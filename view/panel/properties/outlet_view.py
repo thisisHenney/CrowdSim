@@ -1,8 +1,12 @@
+from PySide6.QtWidgets import QCheckBox
+
 from nextlib.utils.ui import load_ui
 from view.panel.properties.outlet_ui import Ui_OutletForm
+from view.panel.properties import _extra_ui
 
 
-_KNOWN_OUTLET_KEYS = {'name', 'num', 'is_erase', 'type', 'p1', 'p2', 'grid'}
+_KNOWN_OUTLET_KEYS = {'name', 'num', 'is_erase', 'type', 'p1', 'p2', 'grid',
+                      'settle_radius', 'sig_k', 'sig_x'}
 
 
 class OutletData:
@@ -15,6 +19,9 @@ class OutletData:
         self.p1 = [0, 0]
         self.p2 = [0, 0]
         self.grid = 1
+        self.settle_radius = None
+        self.sig_k = None
+        self.sig_x = None
         self.raw_extra = {}
 
 
@@ -35,6 +42,26 @@ class OutletView:
         ui.pushButton_save.clicked.connect(self._clicked_save)
         ui.pushButton_remove.clicked.connect(self._clicked_remove)
 
+        self._build_extra_fields()
+
+    def _build_extra_fields(self):
+        """uic 출력에 없는 입력란을 덧붙인다 (is_erase / grid / 정착·시그모이드)."""
+        ui = self.ui
+
+        ui.checkBox_is_erase = QCheckBox('통과한 입자를 제거 (is_erase)')
+        ui.lineEdit_grid = _extra_ui.make_edit(width=80)
+        ui.lineEdit_settle_radius = _extra_ui.make_edit(width=80, placeholder='미사용')
+        ui.lineEdit_sig_k = _extra_ui.make_edit(width=80, placeholder='미사용')
+        ui.lineEdit_sig_x = _extra_ui.make_edit(width=80, placeholder='미사용')
+
+        lay = ui.verticalLayout_5
+        lay.addWidget(ui.checkBox_is_erase)
+        lay.addWidget(_extra_ui.make_row('Grid', ui.lineEdit_grid, stretch_last=False))
+        lay.addWidget(_extra_ui.make_row('정착 반경', ui.lineEdit_settle_radius,
+                                         stretch_last=False))
+        lay.addWidget(_extra_ui.make_row('sig_k / sig_x', ui.lineEdit_sig_k,
+                                         ui.lineEdit_sig_x, stretch_last=False))
+
     def _changed_combo_name(self, index):
         if index == -1:
             return
@@ -54,6 +81,11 @@ class OutletView:
             ui.lineEdit_p1_y.setText('0')
             ui.lineEdit_p2_x.setText('1')
             ui.lineEdit_p2_y.setText('1')
+            ui.checkBox_is_erase.setChecked(False)
+            ui.lineEdit_grid.setText('1')
+            ui.lineEdit_settle_radius.setText('')
+            ui.lineEdit_sig_k.setText('')
+            ui.lineEdit_sig_x.setText('')
 
         else:
             cur_data = self.outlet_data[index]
@@ -66,6 +98,11 @@ class OutletView:
             ui.lineEdit_p1_y.setText(str(cur_data.p1[1]))
             ui.lineEdit_p2_x.setText(str(cur_data.p2[0]))
             ui.lineEdit_p2_y.setText(str(cur_data.p2[1]))
+            ui.checkBox_is_erase.setChecked(bool(cur_data.is_erase))
+            ui.lineEdit_grid.setText(str(cur_data.grid))
+            ui.lineEdit_settle_radius.setText(_extra_ui.format_num(cur_data.settle_radius))
+            ui.lineEdit_sig_k.setText(_extra_ui.format_num(cur_data.sig_k))
+            ui.lineEdit_sig_x.setText(_extra_ui.format_num(cur_data.sig_x))
 
     def _clicked_add(self):
         self.add_data()
@@ -104,6 +141,12 @@ class OutletView:
         get_data.p2[0] = ui.lineEdit_p2_x.text()
         get_data.p2[1] = ui.lineEdit_p2_y.text()
 
+        get_data.is_erase = ui.checkBox_is_erase.isChecked()
+        get_data.grid = _extra_ui.parse_num(ui.lineEdit_grid.text(), 1)
+        get_data.settle_radius = _extra_ui.parse_num(ui.lineEdit_settle_radius.text())
+        get_data.sig_k = _extra_ui.parse_num(ui.lineEdit_sig_k.text())
+        get_data.sig_x = _extra_ui.parse_num(ui.lineEdit_sig_x.text())
+
         return get_data
 
     def save_data(self, index=-1):
@@ -122,6 +165,12 @@ class OutletView:
         ui = self.ui
         outlets = solver.data.get('config.outlet')
         if not outlets:
+            # 섹션이 비어 있으면 이전 프로젝트 값이 남지 않도록 비운다
+            ui.comboBox_name.blockSignals(True)
+            self.outlet_data.clear()
+            ui.comboBox_name.clear()
+            ui.comboBox_name.blockSignals(False)
+            self.change_data(-1)
             return
 
         ui.comboBox_name.blockSignals(True)
@@ -143,6 +192,9 @@ class OutletView:
                 d.p1 = [str(p1[0]), str(p1[1])]
                 d.p2 = [str(p2[0]), str(p2[1])]
             d.grid = outlet.get('grid', 1)
+            d.settle_radius = outlet.get('settle_radius')
+            d.sig_k = outlet.get('sig_k')
+            d.sig_x = outlet.get('sig_x')
             d.raw_extra = {k: v for k, v in outlet.items() if k not in _KNOWN_OUTLET_KEYS}
             self.outlet_data.append(d)
             ui.comboBox_name.addItem(d.name)
@@ -173,9 +225,15 @@ class OutletView:
 
     def save_input_file(self, solver):
         for i, d in enumerate(self.outlet_data):
-            solver.add_outlet(d.is_point, num=getattr(d, 'num', i))
+            # num은 목록 순서를 그대로 쓴다(0부터). zone.outlet_id/inlet.exclude_outlets가
+            # 이 번호로 출구를 지목하므로 목록 위치와 반드시 일치해야 한다. 예전엔
+            # `getattr(d, 'num', i)`였는데 OutletData가 num을 항상 0으로 초기화하고
+            # 위젯도 없어서 폴백이 결코 동작하지 않았고, 그 결과 GUI로 만든 케이스는
+            # 모든 출구가 num=0이었다.
+            d.num = i
+            solver.add_outlet(d.is_point, num=i)
             solver.data.set(f'config.outlet[{i}].name', getattr(d, 'name', 'outlet'))
-            solver.data.set(f'config.outlet[{i}].num', getattr(d, 'num', i))
+            solver.data.set(f'config.outlet[{i}].num', i)
             solver.data.set(f'config.outlet[{i}].is_erase', getattr(d, 'is_erase', False))
             if d.is_point:
                 solver.data.set(f'config.outlet[{i}].p1[0]', float(d.p[0]))
@@ -186,6 +244,16 @@ class OutletView:
                 solver.data.set(f'config.outlet[{i}].p2[0]', float(d.p2[0]))
                 solver.data.set(f'config.outlet[{i}].p2[1]', float(d.p2[1]))
             solver.data.set(f'config.outlet[{i}].grid', getattr(d, 'grid', 1))
+
+            # 원래 없던 키가 저장만으로 새로 생기지 않도록 값이 있을 때만 쓴다.
+            # 다만 선(line) 출구의 sig_k/sig_x는 예외로 항상 쓴다 — 이 두 키가
+            # 없으면 솔버가 메시지 한 줄 없이 즉시 죽는다(0xC0000409).
+            for key in ('settle_radius', 'sig_k', 'sig_x'):
+                value = getattr(d, key, None)
+                if value is None and not d.is_point and key in ('sig_k', 'sig_x'):
+                    value = 0.0
+                if value is not None:
+                    solver.data.set(f'config.outlet[{i}].{key}', value)
 
             for k, v in getattr(d, 'raw_extra', {}).items():
                 solver.data.set(f'config.outlet[{i}].{k}', v)

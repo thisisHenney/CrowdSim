@@ -126,14 +126,14 @@ class GridView:
         ui.comboBox_name.removeItem(index)
         del self.grid_data[index]
 
-        # if len(self.grid_data) == 0:
-        #     ui.lineEdit_min_x.setDisabled(True)
-        #     ui.lineEdit_min_y.setDisabled(True)
-        #     ui.lineEdit_max_x.setDisabled(True)
-        #     ui.lineEdit_max_y.setDisabled(True)
-        #     ui.lineEdit_width.setDisabled(True)
-        #     ui.lineEdit_max_particle.setDisabled(True)
-
+        # Grid는 도메인 정의라 삭제해도 다른 패널의 grid 인덱스를
+        # 자동으로 당기지 않는다. 아래처럼 재정렬하면 inlet/outlet의
+        # grid 참조가 어긋나므로 의도적으로 두지 않는다.
+        #
+        # for panel in (self._parent.prop_inlet, self._parent.prop_outlet):
+        #     for d in panel.data:
+        #         if int(d.grid) > index:
+        #             d.grid = int(d.grid) - 1
         self.change_data(index)
 
     def save_input_file(self, solver):
@@ -158,6 +158,12 @@ class GridView:
         ui = self.ui
         grids = solver.data.get('config.grid')
         if not grids:
+            # 섹션이 비어 있으면 이전 프로젝트 값이 남지 않도록 비운다
+            ui.comboBox_name.blockSignals(True)
+            self.grid_data.clear()
+            ui.comboBox_name.clear()
+            ui.comboBox_name.blockSignals(False)
+            self.change_data(-1)
             return
 
         ui.comboBox_name.blockSignals(True)

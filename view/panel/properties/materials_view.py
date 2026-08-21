@@ -138,6 +138,12 @@ class MaterialsView:
         ui = self.ui
         materials = solver.data.get('config.materials')
         if not materials:
+            # 섹션이 비어 있으면 이전 프로젝트 값이 남지 않도록 비운다
+            ui.comboBox_name.blockSignals(True)
+            self.material_data.clear()
+            ui.comboBox_name.clear()
+            ui.comboBox_name.blockSignals(False)
+            self.change_data(-1)
             return
 
         ui.comboBox_name.blockSignals(True)

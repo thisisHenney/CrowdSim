@@ -1,5 +1,6 @@
 from nextlib.utils.ui import load_ui
 from view.panel.properties.solver_common_ui import Ui_SolverCommonForm
+from view.panel.properties import _extra_ui
 
 
 class SolverCommonView:
@@ -12,7 +13,31 @@ class SolverCommonView:
         self._initialize()
 
     def _initialize(self):
-        ...
+        self._build_extra_fields()
+
+    def _build_extra_fields(self):
+        """uic 출력에 없는 입력란을 덧붙인다.
+
+        `initial_outlet_id`/`exit_ratio`는 초기 군중을 어느 출구로 얼마나
+        보낼지 정하는 값으로, 카운터플로우(S5) 시나리오에 필요하다.
+        비워 두면 키를 만들지 않는다.
+        """
+        ui = self.ui
+
+        group, lay = _extra_ui.make_group('초기 배분 / 설명 (선택)')
+
+        ui.lineEdit_initial_outlet_id = _extra_ui.make_edit(width=90, placeholder='미사용')
+        lay.addWidget(_extra_ui.make_row('초기 출구 번호', ui.lineEdit_initial_outlet_id,
+                                         label_width=120, stretch_last=False))
+
+        ui.lineEdit_exit_ratio = _extra_ui.make_edit(width=90, placeholder='미사용')
+        lay.addWidget(_extra_ui.make_row('퇴장 비율', ui.lineEdit_exit_ratio,
+                                         label_width=120, stretch_last=False))
+
+        ui.lineEdit_comment = _extra_ui.make_edit()
+        lay.addWidget(_extra_ui.make_row('설명', ui.lineEdit_comment, label_width=120))
+
+        ui.verticalLayout.addWidget(group)
 
     def get_widget(self):
         return self.ui.widget
@@ -55,10 +80,20 @@ class SolverCommonView:
         solver.data.set('config.solver_common.initial_velocity[0]', float(ui.lineEdit_32.text()))
         solver.data.set('config.solver_common.initial_velocity[1]', float(ui.lineEdit_33.text()))
 
-        # solver.data.set('config.solver_common.goal_position[0]', 0)
-        # solver.data.set('config.solver_common.goal_position[1]', -12)
-
         solver.data.set('config.solver_common.devices[0]', float(ui.lineEdit_36.text()))
+
+        # 비어 있으면 키를 만들지 않는다 (원본에 없던 항목이 저장만으로 생기지 않게)
+        for key, widget in (('initial_outlet_id', ui.lineEdit_initial_outlet_id),
+                            ('exit_ratio', ui.lineEdit_exit_ratio)):
+            value = _extra_ui.parse_num(widget.text())
+            if value is None:
+                solver.data.remove(f'config.solver_common.{key}')
+            else:
+                solver.data.set(f'config.solver_common.{key}', value)
+
+        comment = ui.lineEdit_comment.text().strip()
+        if comment:
+            solver.data.set('config.comment', comment)
 
         return solver
 
@@ -116,3 +151,11 @@ class SolverCommonView:
         ui.lineEdit_33.setText(g(f'{sc}.initial_velocity[1]', '0'))
 
         ui.lineEdit_36.setText(g(f'{sc}.devices[0]', '0'))
+
+        ui.lineEdit_initial_outlet_id.setText(
+            _extra_ui.format_num(solver.data.get(f'{sc}.initial_outlet_id')))
+        ui.lineEdit_exit_ratio.setText(
+            _extra_ui.format_num(solver.data.get(f'{sc}.exit_ratio')))
+
+        comment = solver.data.get('config.comment')
+        ui.lineEdit_comment.setText('' if comment is None else str(comment))

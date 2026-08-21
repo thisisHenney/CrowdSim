@@ -1,10 +1,28 @@
 from pathlib import Path
 import shutil
 
-from PySide6.QtWidgets import QMessageBox
+from PySide6.QtWidgets import QComboBox, QMessageBox, QPushButton
 
 from nextlib.utils.ui import load_ui
 from view.panel.properties.particle_ui import Ui_ParticleForm
+from view.panel.properties import _extra_ui
+
+
+class BinaryData:
+    """초기 군중 binary 항목(config.particle_generation의 binary_path 엔트리).
+
+    이전엔 GUI가 편집 못 하는 것으로 보고 원본을 그대로 보존만 하는
+    passthrough였는데, 이제 목록으로 보여주고 직접 편집할 수 있게 한다.
+    """
+    def __init__(self):
+        self.binary_path = ''
+        self.material = 'fluid'
+        self.grid = 1
+        self.translate = [0, 0]
+        # 원본 JSON에서의 particle_generation 배열 인덱스(domain 항목과 순서를
+        # 맞춰 재기록하기 위함). GUI에서 새로 추가된 항목은 None -> 저장 시 맨 뒤로.
+        self.orig_index = None
+        self.raw_extra = {}
 
 
 class ParticleData:
@@ -45,7 +63,7 @@ class ParticleView:
         self.ui = load_ui(None, Ui_ParticleForm).ui
 
         self.particle_data = []
-        self._binary_passthrough = []
+        self.binary_data = []
         # 현재 선택된 particle_generation 항목에 속한 모든 segment(벽/field 등)의 미리보기 액터
         self._mesh_preview_actors = []
         # mesh_select로 방금 고른(아직 추가/저장 전인) 파일의 미리보기 액터
@@ -74,6 +92,190 @@ class ParticleView:
 
         ui.pushButton_mesh_select.clicked.connect(self._clicked_mesh_select)
 
+        self._build_region_z_fields()
+        self._build_binary_fields()
+
+    def _build_binary_fields(self):
+        """초기 군중 binary 항목(binary_path/material/grid/translate)을 GUI에서
+        직접 보고 편집할 수 있게 덧붙인다 (uic 출력엔 없음, 예전엔 안 보이는 passthrough였음)."""
+        ui = self.ui
+
+        group, lay = _extra_ui.make_group('초기 입자 파일 (binary)')
+
+        ui.comboBox_binary_name = QComboBox()
+        ui.comboBox_binary_name.setEditable(False)
+        ui.comboBox_binary_name.currentIndexChanged.connect(self._changed_combo_binary_name)
+        lay.addWidget(_extra_ui.make_row('항목', ui.comboBox_binary_name))
+
+        ui.pushButton_binary_add = QPushButton('Add')
+        ui.pushButton_binary_save = QPushButton('Save')
+        ui.pushButton_binary_remove = QPushButton('Remove')
+        ui.pushButton_binary_add.clicked.connect(self._clicked_binary_add)
+        ui.pushButton_binary_save.clicked.connect(self._clicked_binary_save)
+        ui.pushButton_binary_remove.clicked.connect(self._clicked_binary_remove)
+        lay.addWidget(_extra_ui.make_button_row(
+            ui.pushButton_binary_add, ui.pushButton_binary_save, ui.pushButton_binary_remove))
+
+        ui.lineEdit_binary_path = _extra_ui.make_edit(placeholder='예: initial/total_cleaned.e8b')
+        ui.pushButton_binary_select = QPushButton('...')
+        ui.pushButton_binary_select.setFixedWidth(28)
+        ui.pushButton_binary_select.clicked.connect(self._clicked_binary_select)
+        lay.addWidget(_extra_ui.make_row('파일', ui.lineEdit_binary_path, ui.pushButton_binary_select))
+
+        ui.comboBox_binary_material = QComboBox()
+        ui.comboBox_binary_material.addItems(['solid', 'fluid'])
+        lay.addWidget(_extra_ui.make_row('Material', ui.comboBox_binary_material, stretch_last=False))
+
+        ui.lineEdit_binary_grid = _extra_ui.make_edit(width=80)
+        lay.addWidget(_extra_ui.make_row('Grid', ui.lineEdit_binary_grid, stretch_last=False))
+
+        ui.lineEdit_binary_translate_x = _extra_ui.make_edit(width=90)
+        ui.lineEdit_binary_translate_y = _extra_ui.make_edit(width=90)
+        lay.addWidget(_extra_ui.make_row('Translate X / Y', ui.lineEdit_binary_translate_x,
+                                         ui.lineEdit_binary_translate_y, stretch_last=False))
+
+        ui.verticalLayout_2.addWidget(group)
+
+        self._change_binary_data(-1)
+
+    def _build_region_z_fields(self):
+        """Base Region의 Z 성분 입력란을 덧붙인다 (uic 출력엔 X/Y만 있음).
+
+        기존엔 get_cur_data()가 min.z/max.z를 0/1로 하드코딩해서, 로드된 값이
+        무엇이든(예: 실제 예제는 둘 다 1) 저장할 때마다 덮어써버렸다.
+        """
+        ui = self.ui
+
+        ui.lineEdit_region_min_z = _extra_ui.make_edit(width=60)
+        ui.lineEdit_region_max_z = _extra_ui.make_edit(width=60)
+        ui.verticalLayout_4.addWidget(_extra_ui.make_row(
+            'Base Region Z (Min/Max)', ui.lineEdit_region_min_z, ui.lineEdit_region_max_z,
+            stretch_last=False))
+
+    # ------------------------------------------------------------------
+    # 초기 입자 파일 (binary) 목록
+    # ------------------------------------------------------------------
+    def _changed_combo_binary_name(self, index):
+        if index == -1:
+            return
+        self._change_binary_data(index)
+
+    def _binary_label(self, d):
+        return Path(d.binary_path).name if d.binary_path else '(new)'
+
+    def _change_binary_data(self, index):
+        ui = self.ui
+        index = index if self.binary_data and (0 <= index < len(self.binary_data)) else (
+            len(self.binary_data) - 1 if len(self.binary_data) > 0 else -1)
+
+        if index == -1:
+            ui.lineEdit_binary_path.setText('')
+            ui.comboBox_binary_material.setCurrentText('fluid')
+            ui.lineEdit_binary_grid.setText('1')
+            ui.lineEdit_binary_translate_x.setText('0')
+            ui.lineEdit_binary_translate_y.setText('0')
+        else:
+            d = self.binary_data[index]
+            ui.lineEdit_binary_path.setText(d.binary_path)
+            ui.comboBox_binary_material.setCurrentText(d.material)
+            ui.lineEdit_binary_grid.setText(str(d.grid))
+            tx = d.translate[0] if len(d.translate) > 0 else 0
+            ty = d.translate[1] if len(d.translate) > 1 else 0
+            ui.lineEdit_binary_translate_x.setText(str(tx))
+            ui.lineEdit_binary_translate_y.setText(str(ty))
+
+    def _clicked_binary_add(self):
+        self.add_binary_data()
+
+    def add_binary_data(self):
+        ui = self.ui
+        get_data = self.get_cur_binary_data(BinaryData())
+
+        self.binary_data.append(get_data)
+        ui.comboBox_binary_name.addItem(self._binary_label(get_data))
+        ui.comboBox_binary_name.setCurrentIndex(len(self.binary_data) - 1)
+
+    def get_cur_binary_data(self, get_data=None):
+        ui = self.ui
+
+        get_data.binary_path = ui.lineEdit_binary_path.text().strip()
+        get_data.material = ui.comboBox_binary_material.currentText()
+        get_data.grid = _extra_ui.parse_num(ui.lineEdit_binary_grid.text(), 1)
+
+        tx = _extra_ui.parse_num(ui.lineEdit_binary_translate_x.text(), 0)
+        ty = _extra_ui.parse_num(ui.lineEdit_binary_translate_y.text(), 0)
+        get_data.translate = [tx, ty]
+
+        return get_data
+
+    def _clicked_binary_save(self):
+        self.save_binary_data()
+
+    def save_binary_data(self):
+        ui = self.ui
+        index = ui.comboBox_binary_name.currentIndex()
+        if index == -1:
+            return
+
+        cur_data = self.binary_data[index]
+        self.get_cur_binary_data(cur_data)
+        self.change_combo_text(ui.comboBox_binary_name, index, self._binary_label(cur_data))
+
+    def _clicked_binary_remove(self):
+        self.remove_binary_data()
+
+    def remove_binary_data(self):
+        ui = self.ui
+        index = ui.comboBox_binary_name.currentIndex()
+        if index == -1:
+            return
+
+        ui.comboBox_binary_name.removeItem(index)
+        del self.binary_data[index]
+
+        self._change_binary_data(index)
+
+    def _clicked_binary_select(self):
+        from nextlib.dialogbox.dialogbox import FileDialogBox
+
+        filters = 'e8b (*.e8b);;All file (*.*)'
+        get_file = FileDialogBox.open_file(self._parent, filters=filters)
+        if not get_file:
+            return
+
+        src = Path(get_file)
+        project_path = getattr(getattr(self._parent, 'prj', None), 'path', None)
+        if not project_path:
+            self.ui.lineEdit_binary_path.setText(str(src))
+            return
+
+        initial_dir = Path(project_path) / 'initial'
+        dest = initial_dir / src.name
+
+        if dest.exists() and dest.resolve() != src.resolve():
+            box = QMessageBox(self._parent)
+            box.setWindowTitle('파일 이름 중복')
+            box.setText(f"initial 폴더에 이미 '{src.name}' 파일이 있습니다.\n어떻게 하시겠습니까?")
+            overwrite_btn = box.addButton('덮어쓰기', QMessageBox.ButtonRole.AcceptRole)
+            keep_btn = box.addButton('복사 안하고 기존 폴더 사용', QMessageBox.ButtonRole.DestructiveRole)
+            cancel_btn = box.addButton('취소', QMessageBox.ButtonRole.RejectRole)
+            box.setDefaultButton(cancel_btn)
+            box.exec()
+            clicked = box.clickedButton()
+
+            if clicked == cancel_btn:
+                return
+            if clicked == keep_btn:
+                self.ui.lineEdit_binary_path.setText(f'initial/{dest.name}')
+                return
+            # overwrite_btn -> 아래에서 복사 진행
+
+        initial_dir.mkdir(parents=True, exist_ok=True)
+        if dest.resolve() != src.resolve():
+            shutil.copy2(src, dest)
+
+        self.ui.lineEdit_binary_path.setText(f'initial/{dest.name}')
+
     def _changed_combo_name(self, index):
         if index == -1:
             return
@@ -97,8 +299,10 @@ class ParticleView:
             ui.lineEdit_base_dx.setText('')
             ui.lineEdit_region_min_x.setText('')
             ui.lineEdit_region_min_y.setText('')
+            ui.lineEdit_region_min_z.setText('')
             ui.lineEdit_region_max_x.setText('')
             ui.lineEdit_region_max_y.setText('')
+            ui.lineEdit_region_max_z.setText('')
 
             self.change_segment_data(-1)
             self._preview_segments(-1)
@@ -118,8 +322,10 @@ class ParticleView:
             ui.lineEdit_base_dx.setText(str(cur_data.base_dx))
             ui.lineEdit_region_min_x.setText(str(cur_data.region_min[0]))
             ui.lineEdit_region_min_y.setText(str(cur_data.region_min[1]))
+            ui.lineEdit_region_min_z.setText(str(cur_data.region_min[2]))
             ui.lineEdit_region_max_x.setText(str(cur_data.region_max[0]))
             ui.lineEdit_region_max_y.setText(str(cur_data.region_max[1]))
+            ui.lineEdit_region_max_z.setText(str(cur_data.region_max[2]))
 
             self.change_segment_data(0)
             self._preview_segments(index)
@@ -131,13 +337,18 @@ class ParticleView:
         ui = self.ui
 
         particle_index = ui.comboBox_name.currentIndex()
-        segment_index = segment_index if self.particle_data[particle_index].segment_data and (0 <= segment_index < len(self.particle_data[particle_index].segment_data)) else (
-            len(self.particle_data[particle_index].segment_data) - 1 if len(self.particle_data[particle_index].segment_data) > 0 else -1)
-
         # segment_data 자체는 change_data()에서 particle 항목 단위로 한꺼번에 미리보기하므로,
         # 여기서는 방금 선택했을 뿐 아직 추가/저장 안 된(pending) 미리보기만 정리한다.
         self._clear_pending_mesh_preview()
         self._pending_mesh_translate = None
+
+        # particle_generation 항목 자체가 없으면(예: 빈 프로젝트) segment도 없는 것으로 처리
+        if not (0 <= particle_index < len(self.particle_data)):
+            segment_index = -1
+        else:
+            segments = self.particle_data[particle_index].segment_data
+            segment_index = segment_index if segments and (0 <= segment_index < len(segments)) else (
+                len(segments) - 1 if len(segments) > 0 else -1)
 
         if segment_index == -1:
             ui.checkBox_interval_normal.setChecked(SegmentData().invert_normal)
@@ -181,8 +392,10 @@ class ParticleView:
         get_data.grid = ui.lineEdit_grid.text()
 
         get_data.base_dx = ui.lineEdit_base_dx.text()
-        get_data.region_min = [ui.lineEdit_region_min_x.text(), ui.lineEdit_region_min_y.text(), 0]
-        get_data.region_max = [ui.lineEdit_region_max_x.text(), ui.lineEdit_region_max_y.text(), 1]
+        get_data.region_min = [ui.lineEdit_region_min_x.text(), ui.lineEdit_region_min_y.text(),
+                              ui.lineEdit_region_min_z.text()]
+        get_data.region_max = [ui.lineEdit_region_max_x.text(), ui.lineEdit_region_max_y.text(),
+                              ui.lineEdit_region_max_z.text()]
 
         return get_data
 
@@ -298,17 +511,40 @@ class ParticleView:
         ui = self.ui
         particles = solver.data.get('config.particle_generation')
         if not particles:
+            # 섹션이 비어 있으면 이전 프로젝트 값이 남지 않도록 비운다
+            ui.comboBox_name.blockSignals(True)
+            self.particle_data.clear()
+            ui.comboBox_name.clear()
+            ui.comboBox_name.blockSignals(False)
+            self.change_data(-1)
+
+            ui.comboBox_binary_name.blockSignals(True)
+            self.binary_data.clear()
+            ui.comboBox_binary_name.clear()
+            ui.comboBox_binary_name.blockSignals(False)
+            self._change_binary_data(-1)
             return
 
         ui.comboBox_name.blockSignals(True)
         self.particle_data.clear()
-        self._binary_passthrough.clear()
         ui.comboBox_name.clear()
+
+        ui.comboBox_binary_name.blockSignals(True)
+        self.binary_data.clear()
+        ui.comboBox_binary_name.clear()
 
         for i, p in enumerate(particles):
             if 'binary_path' in p:
-                # GUI에서 편집 불가한 초기 군중 binary 항목은 원본 그대로 보존 (원본 순서도 함께 기록)
-                self._binary_passthrough.append((i, dict(p)))
+                d = BinaryData()
+                d.orig_index = i
+                d.binary_path = str(p.get('binary_path', ''))
+                d.material = str(p.get('material', 'fluid'))
+                d.grid = p.get('grid', 1)
+                d.translate = list(p.get('translate', [0, 0]))
+                _known_binary_keys = {'binary_path', 'material', 'grid', 'translate'}
+                d.raw_extra = {k: v for k, v in p.items() if k not in _known_binary_keys}
+                self.binary_data.append(d)
+                ui.comboBox_binary_name.addItem(self._binary_label(d))
                 continue
 
             d = ParticleData()
@@ -342,6 +578,7 @@ class ParticleView:
             ui.comboBox_name.addItem(d.name)
 
         ui.comboBox_name.blockSignals(False)
+        ui.comboBox_binary_name.blockSignals(False)
 
         if self.particle_data:
             ui.comboBox_name.setCurrentIndex(0)
@@ -355,6 +592,12 @@ class ParticleView:
             if self.particle_data[0].segment_data:
                 ui.comboBox_segment_name.setCurrentIndex(0)
                 self.change_segment_data(0)
+
+        if self.binary_data:
+            ui.comboBox_binary_name.setCurrentIndex(0)
+            self._change_binary_data(0)
+        else:
+            self._change_binary_data(-1)
 
     def _clicked_mesh_select(self):
         from nextlib.dialogbox.dialogbox import FileDialogBox
@@ -523,16 +766,24 @@ class ParticleView:
         return self.ui.widget
 
     def save_input_file(self, solver):
-        # binary(passthrough)/domain_general 항목을 원본 particle_generation 배열의 순서 그대로
+        # binary/domain_general 항목을 원본 particle_generation 배열의 순서 그대로
         # 다시 섞어 써야 한다 (그렇지 않으면 항목 자체는 안 잃어버려도 순서가 뒤바뀜).
         # orig_index가 없는(= GUI에서 새로 추가된) 항목은 원본에 없던 것이므로 맨 뒤로 보낸다.
-        entries = [(orig_index, 'binary', raw) for orig_index, raw in self._binary_passthrough]
+        entries = [(d.orig_index, 'binary', d) for d in self.binary_data]
         entries += [(d.orig_index, 'domain', d) for d in self.particle_data]
         entries.sort(key=lambda e: (e[0] is None, e[0] if e[0] is not None else 0))
 
         for _, kind, payload in entries:
             if kind == 'binary':
-                solver.data.add('config.particle_generation', dict(payload))
+                d = payload
+                entry = {
+                    'binary_path': d.binary_path,
+                    'material': d.material,
+                    'grid': int(d.grid),
+                    'translate': list(d.translate),
+                }
+                entry.update(getattr(d, 'raw_extra', {}))
+                solver.data.add('config.particle_generation', entry)
                 continue
 
             d = payload
