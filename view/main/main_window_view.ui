@@ -211,7 +211,20 @@ QMainWindow::separator{
     <number>2</number>
    </attribute>
    <widget class="QWidget" name="dockWidgetContents_command">
-    <layout class="QVBoxLayout" name="verticalLayout_command"/>
+    <layout class="QVBoxLayout" name="verticalLayout_command">
+     <property name="leftMargin">
+      <number>2</number>
+     </property>
+     <property name="topMargin">
+      <number>2</number>
+     </property>
+     <property name="rightMargin">
+      <number>2</number>
+     </property>
+     <property name="bottomMargin">
+      <number>2</number>
+     </property>
+    </layout>
    </widget>
   </widget>
   <widget class="QDockWidget" name="dockWidget_properties">
@@ -231,7 +244,20 @@ QMainWindow::separator{
     <number>2</number>
    </attribute>
    <widget class="QWidget" name="dockWidgetContents_properties">
-    <layout class="QVBoxLayout" name="verticalLayout_properties"/>
+    <layout class="QVBoxLayout" name="verticalLayout_properties">
+     <property name="leftMargin">
+      <number>2</number>
+     </property>
+     <property name="topMargin">
+      <number>9</number>
+     </property>
+     <property name="rightMargin">
+      <number>2</number>
+     </property>
+     <property name="bottomMargin">
+      <number>9</number>
+     </property>
+    </layout>
    </widget>
   </widget>
   <action name="actionNew_Projcect">

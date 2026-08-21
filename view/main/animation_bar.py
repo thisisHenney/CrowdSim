@@ -268,9 +268,17 @@ class AnimationMixin:
         return self._anim_bar
 
     def _set_anim_controls_enabled(self, enabled):
-        """재생 컨트롤 전체를 켜고 끈다. '결과 다시 읽기' 버튼은 결과가 없을 때
-        그걸 확인/재시도할 유일한 방법이라 항상 눌리는 상태로 둔다."""
-        self._anim_bar.setEnabled(enabled)
+        """재생 컨트롤을 켜고 끈다. '결과 다시 읽기' 버튼은 결과가 없을 때
+        그걸 확인/재시도할 유일한 방법이라 항상 눌리는 상태로 둔다.
+
+        `_anim_bar` 컨테이너 자체를 setEnabled(False)로 끄면, 자식 버튼에
+        setEnabled(True)를 걸어도 Qt는 조상 체인 전체의 AND로 활성 상태를
+        따지므로 새로고침 버튼까지 같이 눌리지 않게 된다. 그래서 컨테이너는
+        그대로 켜 두고, 새로고침 버튼을 제외한 나머지만 개별적으로 끈다."""
+        for widget in (self._btn_anim_first, self._btn_anim_prev, self._btn_anim_play,
+                       self._btn_anim_next, self._btn_anim_last, self._anim_slider,
+                       self._anim_spin, self._anim_speed_combo, self._btn_anim_record):
+            widget.setEnabled(enabled)
         self._btn_anim_reload.setEnabled(True)
 
     def _anim_reset(self):

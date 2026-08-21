@@ -207,4 +207,28 @@ class BackgroundMapMixin:
         self.vtk.renderer.AddActor(overlay_actor)
         if reset_camera:
             self.vtk.renderer.ResetCamera()
+            self._fit_camera_to_width(p_min, p_max_x, p_max_y)
         self.vtk.vtk_widget.GetRenderWindow().Render()
+
+    def _fit_camera_to_width(self, p_min, p_max_x, p_max_y):
+        """ResetCamera()는 화면 비율상 더 빡빡한 축(보통 세로)에 맞춰서, 지도가
+        가로로 넓으면 좌우에 여백이 남는다. 지도 가로 폭이 항상 화면 가로에
+        꽉 차도록 뷰포트 비율 대비 부족한 만큼 확대(Zoom)한다."""
+        renderer = self.vtk.renderer
+        w, h = renderer.GetSize()
+        if w <= 0 or h <= 0:
+            return
+
+        map_width = ((p_max_x[0] - p_min[0]) ** 2 + (p_max_x[1] - p_min[1]) ** 2) ** 0.5
+        map_height = ((p_max_y[0] - p_min[0]) ** 2 + (p_max_y[1] - p_min[1]) ** 2) ** 0.5
+        if map_width <= 0 or map_height <= 0:
+            return
+
+        camera = renderer.GetActiveCamera()
+        viewport_aspect = w / h
+        map_aspect = map_width / map_height
+
+        # ResetCamera()가 이미 세로에 맞췄다면(뷰포트가 지도보다 상대적으로 좁으면)
+        # 가로가 남을 것이므로, 부족한 배율만큼 추가로 확대해서 가로를 채운다.
+        if viewport_aspect < map_aspect:
+            camera.Zoom(map_aspect / viewport_aspect)

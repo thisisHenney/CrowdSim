@@ -3,7 +3,7 @@
 ################################################################################
 ## Form generated from reading UI file 'main_window_view.ui'
 ##
-## Created by: Qt User Interface Compiler version 6.9.0
+## Created by: Qt User Interface Compiler version 6.11.1
 ##
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
@@ -143,6 +143,7 @@ class Ui_MainWindowView(object):
         self.dockWidgetContents_command.setObjectName(u"dockWidgetContents_command")
         self.verticalLayout_command = QVBoxLayout(self.dockWidgetContents_command)
         self.verticalLayout_command.setObjectName(u"verticalLayout_command")
+        self.verticalLayout_command.setContentsMargins(2, 2, 2, 2)
         self.dockWidget_command.setWidget(self.dockWidgetContents_command)
         MainWindowView.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.dockWidget_command)
         self.dockWidget_properties = QDockWidget(MainWindowView)
@@ -153,6 +154,7 @@ class Ui_MainWindowView(object):
         self.dockWidgetContents_properties.setObjectName(u"dockWidgetContents_properties")
         self.verticalLayout_properties = QVBoxLayout(self.dockWidgetContents_properties)
         self.verticalLayout_properties.setObjectName(u"verticalLayout_properties")
+        self.verticalLayout_properties.setContentsMargins(2, 9, 2, 9)
         self.dockWidget_properties.setWidget(self.dockWidgetContents_properties)
         MainWindowView.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.dockWidget_properties)
 
@@ -213,7 +215,7 @@ class Ui_MainWindowView(object):
         self.toolBar.setWindowTitle(QCoreApplication.translate("MainWindowView", u"toolBar", None))
         self.dockWidget_settings.setWindowTitle(QCoreApplication.translate("MainWindowView", u"Settings", None))
         ___qtreewidgetitem = self.treeWidget.headerItem()
-        ___qtreewidgetitem.setText(0, QCoreApplication.translate("MainWindowView", u"\uc124\uc815", None));
+        ___qtreewidgetitem.setText(0, QCoreApplication.translate("MainWindowView", u"\uc124\uc815", None))
         self.dockWidget_command.setWindowTitle(QCoreApplication.translate("MainWindowView", u"Run", None))
         self.dockWidget_properties.setWindowTitle(QCoreApplication.translate("MainWindowView", u"Properties", None))
     # retranslateUi
