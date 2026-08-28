@@ -284,6 +284,7 @@ class AnimationMixin:
     def _anim_reset(self):
         """애니메이션 상태와 컨트롤을 초기 상태로 되돌림"""
         self._anim_stop_play()
+        self._stop_preload()
         self._anim_steps = []
         self._anim_files = {}
         self._anim_cache = {}
@@ -300,6 +301,7 @@ class AnimationMixin:
     def _scan_vtk_results(self):
         """케이스 열 때 기존 VTK 결과 파일 스캔"""
         self._anim_stop_play()
+        self._stop_preload()
         self._anim_steps = []
         self._anim_files = {}
         self._anim_cache = {}
@@ -471,8 +473,10 @@ class AnimationMixin:
             self._preload_timer.stop()
 
         self._preload_total = len(self._anim_steps)
-        # 이미 캐시된 프레임 건너뛰기
-        self._preload_queue = [i for i, s in enumerate(self._anim_steps) if s not in self._anim_cache]
+        # 이미 캐시된 프레임 건너뛰기. 인덱스가 아니라 step 값 자체를 큐에 담는다:
+        # 솔버가 실행 중이면 update_solver_file()이 새 스텝을 추가하며 _anim_steps를
+        # 다시 정렬하므로, 인덱스로 담으면 프리로드 도중 가리키는 위치가 어긋난다.
+        self._preload_queue = [s for s in self._anim_steps if s not in self._anim_cache]
         if not self._preload_queue:
             self._ui.statusbar.showMessage(f'전체 {self._preload_total} 프레임 캐시 완료')
             return
@@ -519,8 +523,7 @@ class AnimationMixin:
                 '나머지 프레임은 재생 시 그때그때 불러옵니다.')
             return
 
-        idx = self._preload_queue.pop(0)
-        step = self._anim_steps[idx]
+        step = self._preload_queue.pop(0)
         if step not in self._anim_cache:
             files = self._anim_files.get(step, {})
             actors = {}
