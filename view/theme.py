@@ -14,6 +14,10 @@ THEMES = {
         "ALT_ROW": "#252535",
         # hover 표시용 - ALT_ROW 보다 확실히 밝아야 눈에 띈다
         "HOVER_BG": "#33405e",
+        # 눌린 상태 - HOVER_BG 보다 한 단계 더 진하게
+        "PRESS_BG": "#3d4c6e",
+        # 오류 표시 - 어두운 배경에서도 읽히도록 밝은 빨강
+        "ERROR":    "#e06666",
     },
     "light": {
         "BG":      "#ffffff",   # 흰색 배경
@@ -26,6 +30,10 @@ THEMES = {
         "ALT_ROW": "#f6f8fa",   # 교차 행 색
         # hover 표시용 - ALT_ROW(#f6f8fa)는 BG 와 거의 같아 hover 가 안 보인다
         "HOVER_BG": "#e6effd",
+        # 눌린 상태 - HOVER_BG 보다 한 단계 더 진하게
+        "PRESS_BG": "#cfe0fb",
+        # 오류 표시
+        "ERROR":    "#b91c1c",
     },
 }
 
@@ -116,7 +124,7 @@ QToolButton:hover {{
     border-color: {T('BORDER')};
 }}
 QToolButton:pressed {{
-    background: #dbeafe;
+    background: {T('PRESS_BG')};
     border-color: {T('ACCENT')};
 }}
 QToolBar::separator {{
@@ -149,12 +157,12 @@ QPushButton {{
     font-weight: 500;
 }}
 QPushButton:hover {{
-    background: #eff6ff;
+    background: {T('HOVER_BG')};
     border-color: {T('ACCENT')};
     color: {T('ACCENT')};
 }}
 QPushButton:pressed {{
-    background: #dbeafe;
+    background: {T('PRESS_BG')};
     border-color: {T('ACCENT')};
     color: {T('ACCENT')};
 }}
@@ -198,7 +206,7 @@ QDoubleSpinBox::up-button, QDoubleSpinBox::down-button {{
 }}
 QSpinBox::up-button:hover, QSpinBox::down-button:hover,
 QDoubleSpinBox::up-button:hover, QDoubleSpinBox::down-button:hover {{
-    background: #dbeafe;
+    background: {T('HOVER_BG')};
 }}
 QSpinBox::up-arrow, QDoubleSpinBox::up-arrow {{
     image: url({_ICONS}/arrow_up.svg);
@@ -282,8 +290,8 @@ QListWidget::item:selected:!active, QListView::item:selected:!active {{
     background: {T('ACCENT')};
     color: #ffffff;
 }}
-/* hover: 기존 #eff6ff 하드코딩은 다크에서 흰 배경이 됐고, ALT_ROW 로 바꾸면
-   배경과 거의 같아 안 보인다. 그래서 hover 전용 색(HOVER_BG)을 쓴다.
+/* hover 는 전용 토큰(HOVER_BG)을 쓴다. 밝은 색을 하드코딩하면 다크 테마에서
+   흰 배경이 되고, ALT_ROW(교차 행 색)를 쓰면 배경과 거의 같아 안 보인다.
    border-left/padding 처럼 박스 크기를 바꾸는 속성은 쓰지 않는다 - hover 마다
    레이아웃이 재계산돼 마우스 이동이 느려진다(측정 0.04 -> 0.01 ms/move). */
 QTreeWidget::item:hover:!selected, QTreeView::item:hover:!selected,
@@ -433,7 +441,7 @@ QTabBar::tab:selected {{
 }}
 QTabBar::tab:hover:!selected {{
     color: {T('TEXT')};
-    background: #eff6ff;
+    background: {T('HOVER_BG')};
     border-color: {T('ACCENT')};
 }}
 
@@ -478,7 +486,7 @@ QRadioButton::indicator:checked {{
 }}
 QRadioButton::indicator:checked:hover {{
     image: url({_radio_checked});
-    background: #dbeafe;
+    background: {T('HOVER_BG')};
     border: 1.5px solid {T('ACCENT')};
     border-radius: 7px;
 }}
@@ -541,7 +549,7 @@ QToolTip {{
     border: 1px dashed {T('ACCENT')};
 }}
 #field[state="bad"] {{
-    border: 1px solid #b91c1c;
+    border: 1px solid {T('ERROR')};
 }}
 #group {{
     background: {T('BG')};
