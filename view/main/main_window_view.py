@@ -187,6 +187,14 @@ class MainWindowView(QMainWindow, AnimationMixin, SolverRunMixin,
         self._ui.actionCommand.triggered.connect(
             lambda: self._ui.dockWidget_command.setVisible(not self._ui.dockWidget_command.isVisible()))
 
+        # 하단 Run 독이 창 전체 폭을 가로지를지, 가운데(VTK) 폭에만 들어갈지.
+        # Qt는 아래쪽 독이 좌우 코너를 차지하면 좌우 독 밑까지 파고들고,
+        # 좌우 독이 차지하면 좌우 독이 위아래로 꽉 차면서 하단 독이 가운데로 좁아진다.
+        self._ui.menuWindow.addSeparator()
+        self.action_run_dock_narrow = self._ui.menuWindow.addAction('Run 독을 가운데 화면 폭에만 표시')
+        self.action_run_dock_narrow.setCheckable(True)
+        self.action_run_dock_narrow.toggled.connect(self._set_bottom_dock_narrow)
+
         self._tools_menu = QMenu('Tools', self)
         self._ui.menubar.insertMenu(self._ui.menuHelp.menuAction(), self._tools_menu)
 
@@ -724,6 +732,34 @@ class MainWindowView(QMainWindow, AnimationMixin, SolverRunMixin,
     def save(self):
         self.save_input_file()
 
+    def _set_bottom_dock_narrow(self, narrow):
+        """하단 독(Run)을 가운데 화면 폭에만 넣을지 창 전체 폭으로 둘지 정한다.
+
+        QMainWindow는 아래쪽 두 코너를 누가 가져가느냐로 이 모양이 갈린다.
+          - BottomDockWidgetArea가 코너를 가지면(기본): 하단 독이 좌우 독 밑까지
+            가로질러 창 전체 폭을 차지한다.
+          - Left/RightDockWidgetArea가 코너를 가지면: 좌우 독이 위아래로 꽉 차고
+            하단 독은 그 사이(=가운데 VTK 폭)로 좁아진다.
+        """
+        self.setCorner(Qt.Corner.BottomLeftCorner,
+                       Qt.DockWidgetArea.LeftDockWidgetArea if narrow
+                       else Qt.DockWidgetArea.BottomDockWidgetArea)
+        self.setCorner(Qt.Corner.BottomRightCorner,
+                       Qt.DockWidgetArea.RightDockWidgetArea if narrow
+                       else Qt.DockWidgetArea.BottomDockWidgetArea)
+
+        # 코너만 바꿔서는 부족하다. Run 독은 기본적으로 splitDockWidget()으로
+        # Settings 아래(왼쪽 영역)에 붙어 있어서, 코너를 좌우에 넘겨도 왼쪽에
+        # 남는다. 하단 영역으로 실제로 옮겨야 가운데 폭으로 들어간다.
+        dock = self._ui.dockWidget_command
+        if dock.isFloating():
+            return
+        if narrow:
+            self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, dock)
+        else:
+            self.splitDockWidget(self._ui.dockWidget_settings, dock,
+                                 Qt.Orientation.Vertical)
+
     def _settings(self):
         ini_path = self.app_info.user_path / 'CrowdSim' / 'window_state.ini'
         ini_path.parent.mkdir(parents=True, exist_ok=True)
@@ -734,9 +770,18 @@ class MainWindowView(QMainWindow, AnimationMixin, SolverRunMixin,
         s.setValue('geometry', self.saveGeometry())
         s.setValue('windowState', self.saveState())
         s.setValue('splitter', self._ui.splitter.saveState())
+        s.setValue('runDockNarrow', self.action_run_dock_narrow.isChecked())
 
     def _restore_window_state(self):
         s = self._settings()
+
+        # 코너 설정을 restoreState()보다 먼저 적용한다. 저장된 독 레이아웃이
+        # 이 코너 배치를 전제로 복원되기 때문이다.
+        narrow = s.value('runDockNarrow', False)
+        narrow = narrow if isinstance(narrow, bool) else str(narrow).lower() == 'true'
+        self.action_run_dock_narrow.setChecked(narrow)
+        self._set_bottom_dock_narrow(narrow)
+
         geometry = s.value('geometry')
         if geometry:
             self.restoreGeometry(geometry)
