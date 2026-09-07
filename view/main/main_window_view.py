@@ -77,6 +77,16 @@ class MainWindowView(QMainWindow, AnimationMixin, SolverRunMixin,
         # TreeWidget이 컬럼 헤더를 항상 보이게 강제하는데, 이 트리는 단일 컬럼이라
         # "설정" 헤더 한 줄이 그냥 큰 타이틀처럼 떠 있는 것처럼 보여서 숨긴다.
         self._ui.treeWidget.header().setVisible(False)
+
+        # nextlib TreeWidget이 위젯 자체에 스타일시트를 박아넣는다(_setup_style).
+        # 위젯 스타일시트는 앱 전역 QSS(theme.py)보다 우선해서 전부 덮어쓰므로,
+        # 테마가 트리에만 적용되지 않는다. nextlib은 다른 프로젝트와 공유하므로
+        # 손대지 않고, 여기서 걷어내 전역 QSS가 그대로 먹도록 한다.
+        #  - border-right: 1px dotted  -> 항목마다 세로 점선이 그어지던 것
+        #  - palette(midlight) hover   -> 배경과 거의 같아 hover가 안 보이던 것
+        self._ui.treeWidget.setStyleSheet('')
+        # 펼침/접힘 애니메이션도 끈다. 트리를 오갈 때 반응이 굼떠 보인다.
+        self._ui.treeWidget.setAnimated(False)
         self.vtk = VtkWidgetBase(self)
         # 불필요한 버튼 숨기기
         for attr in ('_action_select_all', '_action_deselect',
