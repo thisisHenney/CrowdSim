@@ -1,9 +1,30 @@
 from nextlib.utils.ui import load_ui
 from view.panel.properties.zone_ui import Ui_ZoneForm
+from view.panel.properties import _extra_ui
 
 
 _KNOWN_ZONE_KEYS = {'_comment', 'p1', 'p2', 'direction', 'length', 'zone_type',
                     'K_avo', 'avoid_radius', 'outlet_id', 'grid'}
+
+
+_EDIT_FIELDS = (
+    'lineEdit_p1_x',
+    'lineEdit_p1_y',
+    'lineEdit_p2_x',
+    'lineEdit_p2_y',
+    'lineEdit_direction_x',
+    'lineEdit_direction_y',
+    'lineEdit_length',
+    'comboBox_zone_type',
+    'lineEdit_k_avo',
+    'lineEdit_avoid_radius',
+    'lineEdit_outlet_id',
+    'lineEdit_grid',
+    # 항목이 없으면 저장/삭제도 대상이 없다.
+    # ('추가'는 잠그지 않는다 - 첫 항목을 만드는 유일한 길이다)
+    'pushButton_save',
+    'pushButton_remove',
+)
 
 
 class ZoneData:
@@ -38,6 +59,10 @@ class ZoneView:
         ui.pushButton_save.clicked.connect(self._clicked_save)
         ui.pushButton_remove.clicked.connect(self._clicked_remove)
 
+        # 목록이 비어 있는 초기 상태에서는 입력란을 잠가 둔다.
+        # ('추가'를 눌러 항목이 생기면 change_data()가 다시 켠다)
+        _extra_ui.set_fields_enabled(ui, _EDIT_FIELDS, False)
+
     def _changed_combo_name(self, index):
         if index == -1:
             return
@@ -49,6 +74,7 @@ class ZoneView:
             len(self.zone_data) - 1 if len(self.zone_data) > 0 else -1)
 
         if index == -1:
+            _extra_ui.set_fields_enabled(ui, _EDIT_FIELDS, False)
             ui.lineEdit_p1_x.setText('0')
             ui.lineEdit_p1_y.setText('0')
             ui.lineEdit_p2_x.setText('0')
@@ -63,6 +89,7 @@ class ZoneView:
             ui.lineEdit_grid.setText('1')
 
         else:
+            _extra_ui.set_fields_enabled(ui, _EDIT_FIELDS, True)
             cur_data = self.zone_data[index]
 
             ui.lineEdit_p1_x.setText(str(cur_data.p1[0]))
@@ -199,13 +226,23 @@ class ZoneView:
             # add_zone이 심은 zone_type은 첫 zone에서만 뒤이은 set()에 지워진다.
             # (JsonTool.add가 리스트 첫 원소를 dict로 넣어, set의 인덱스 접근이 이를 비운다)
             solver.data.set(f'config.zone[{i}].zone_type', d.zone_type)
-            solver.data.set(f'config.zone[{i}].p1[0]', float(d.p1[0]))
-            solver.data.set(f'config.zone[{i}].p1[1]', float(d.p1[1]))
-            solver.data.set(f'config.zone[{i}].p2[0]', float(d.p2[0]))
-            solver.data.set(f'config.zone[{i}].p2[1]', float(d.p2[1]))
-            solver.data.set(f'config.zone[{i}].direction[0]', float(d.direction[0]))
-            solver.data.set(f'config.zone[{i}].direction[1]', float(d.direction[1]))
-            solver.data.set(f'config.zone[{i}].length', float(d.length))
+
+            # STL 형상으로 정의된 zone(mesh_path)은 사각형 좌표를 쓰지 않는다.
+            # GUI에 mesh zone 편집 UI가 없어 p1/p2/direction/length가 기본값(0)으로
+            # 남아 있으므로, 그대로 쓰면 원본의 형상 zone이 크기 0짜리 사각형 zone으로
+            # 덮어써진다. raw_extra의 mesh_path는 아래에서 그대로 복원된다.
+            if 'mesh_path' in getattr(d, 'raw_extra', {}):
+                for key in ('p1', 'p2', 'direction', 'length'):
+                    solver.data.remove(f'config.zone[{i}].{key}')
+            else:
+                solver.data.set(f'config.zone[{i}].p1[0]', float(d.p1[0]))
+                solver.data.set(f'config.zone[{i}].p1[1]', float(d.p1[1]))
+                solver.data.set(f'config.zone[{i}].p2[0]', float(d.p2[0]))
+                solver.data.set(f'config.zone[{i}].p2[1]', float(d.p2[1]))
+                solver.data.set(f'config.zone[{i}].direction[0]', float(d.direction[0]))
+                solver.data.set(f'config.zone[{i}].direction[1]', float(d.direction[1]))
+                solver.data.set(f'config.zone[{i}].length', float(d.length))
+
             solver.data.set(f'config.zone[{i}].grid', int(d.grid))
 
             if d.zone_type == 'avoid_zone':

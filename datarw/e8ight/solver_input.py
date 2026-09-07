@@ -184,7 +184,9 @@ class SolverData:
                 "p2": [0, 0],
                 "direction": [0, 1],
                 "length": 1.0,
-                "zone_type": "change_goal_position",
+                # avoid_zone이 아닌 타입(change_goal_position / outlet)은 모두
+                # outlet_id를 쓰므로 zone_type을 그대로 넘겨 유실되지 않게 한다.
+                "zone_type": zone_type,
                 "outlet_id": 0,
                 "grid": 1
             })

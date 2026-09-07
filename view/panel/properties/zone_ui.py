@@ -249,6 +249,7 @@ class Ui_ZoneForm(object):
         self.comboBox_zone_type = QComboBox(self.groupBox_4)
         self.comboBox_zone_type.addItem("")
         self.comboBox_zone_type.addItem("")
+        self.comboBox_zone_type.addItem("")
         self.comboBox_zone_type.setObjectName(u"comboBox_zone_type")
         self.comboBox_zone_type.setFont(font)
 
@@ -361,6 +362,7 @@ class Ui_ZoneForm(object):
         self.label_25.setText(QCoreApplication.translate("ZoneForm", u"zone_type :", None))
         self.comboBox_zone_type.setItemText(0, QCoreApplication.translate("ZoneForm", u"avoid_zone", None))
         self.comboBox_zone_type.setItemText(1, QCoreApplication.translate("ZoneForm", u"change_goal_position", None))
+        self.comboBox_zone_type.setItemText(2, QCoreApplication.translate("ZoneForm", u"outlet", None))
 
         self.label_26.setText(QCoreApplication.translate("ZoneForm", u"K_avo :", None))
         self.lineEdit_k_avo.setText(QCoreApplication.translate("ZoneForm", u"200.0", None))
