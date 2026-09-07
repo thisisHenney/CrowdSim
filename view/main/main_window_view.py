@@ -496,7 +496,7 @@ class MainWindowView(QMainWindow, AnimationMixin, SolverRunMixin,
         self.cmd.set_defaults()
 
         self.set_dirty(False)
-        self._update_title()
+        self._update_title()   # 프로젝트 경로가 바뀌었으므로 제목을 다시 만든다
         self._ui.statusbar.showMessage('Ready')
         # VTK 렌더 위젯이 아직 화면에 표시(임베드)되지 않은 상태에서 Render()가 호출되면
         # "must be a top level window" 경고가 뜨고 첫 프레임이 화면에 반영되지 않는다.
@@ -578,6 +578,10 @@ class MainWindowView(QMainWindow, AnimationMixin, SolverRunMixin,
                 self.prop_export)
 
     def new_project(self, parent=None):
+        # 새 프로젝트로 넘어가면 현재 편집 내용이 사라지므로 먼저 묻는다.
+        # (시작 화면에서 부르는 경우엔 아직 편집한 게 없어 그냥 통과한다)
+        if not self._confirm_discard_changes():
+            return
         dlg = QDialog(parent or self)
         dlg.setWindowTitle('새 프로젝트')
         dlg.setFixedWidth(450)
@@ -662,6 +666,9 @@ class MainWindowView(QMainWindow, AnimationMixin, SolverRunMixin,
         self.set_defaults(get_path)
 
     def open_project(self):
+        # 다른 프로젝트를 열면 현재 편집 내용이 사라지므로 먼저 묻는다.
+        if not self._confirm_discard_changes():
+            return
         get_path = DirDialogBox.open_folder(self, title='Open Project')
         if get_path:
             self.set_defaults(get_path)
@@ -733,9 +740,9 @@ class MainWindowView(QMainWindow, AnimationMixin, SolverRunMixin,
     def set_dirty(self, dirty=True):
         """저장되지 않은 변경이 있는지 표시한다.
 
-        각 Properties 패널의 추가/저장/삭제에서 호출된다. 값을 입력란에
-        치는 것만으로는 켜지지 않는데, 이 프로그램은 항목별 "저장" 버튼을
-        눌러야 내부 데이터에 반영되는 2단계 구조이기 때문이다.
+        Properties 패널에서 항목을 추가/삭제하거나 입력란을 편집하면
+        켜지고, 툴바 Save / Save As / Run / 프로젝트 로드에서 꺼진다.
+        켜져 있으면 창 제목에 * 가 붙고, 종료할 때 저장할지 묻는다.
         """
         if getattr(self, '_dirty', False) == dirty:
             return
@@ -768,7 +775,9 @@ class MainWindowView(QMainWindow, AnimationMixin, SolverRunMixin,
         box.setText('저장하지 않은 변경사항이 있습니다.')
         box.setInformativeText('저장하시겠습니까?')
         save = box.addButton('저장', QMessageBox.ButtonRole.AcceptRole)
-        discard = box.addButton('저장 안 함', QMessageBox.ButtonRole.DestructiveRole)
+        # "저장 안 함"은 clicked 비교에 쓰지 않는다 - save/cancel 이 아니면
+        # 곧 저장 안 함이므로, 버튼만 달아 둔다.
+        box.addButton('저장 안 함', QMessageBox.ButtonRole.DestructiveRole)
         cancel = box.addButton('취소', QMessageBox.ButtonRole.RejectRole)
         box.setDefaultButton(save)
         box.exec()

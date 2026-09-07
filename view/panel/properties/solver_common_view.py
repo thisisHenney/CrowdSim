@@ -3,6 +3,41 @@ from view.panel.properties.solver_common_ui import Ui_SolverCommonForm
 from view.panel.properties import _extra_ui
 
 
+_DIRTY_FIELDS = (
+    'checkBox_is_blending',
+    'comboBox_collision_avoidance',
+    'doubleSpinBox_collision_density',
+    'doubleSpinBox_sph_density',
+    'lineEdit_12',
+    'lineEdit_13',
+    'lineEdit_14',
+    'lineEdit_15',
+    'lineEdit_16',
+    'lineEdit_17',
+    'lineEdit_18',
+    'lineEdit_19',
+    'lineEdit_20',
+    'lineEdit_21',
+    'lineEdit_22',
+    'lineEdit_23',
+    'lineEdit_24',
+    'lineEdit_25',
+    'lineEdit_26',
+    'lineEdit_27',
+    'lineEdit_28',
+    'lineEdit_29',
+    'lineEdit_30',
+    'lineEdit_31',
+    'lineEdit_32',
+    'lineEdit_33',
+    'lineEdit_36',
+    'lineEdit_comment',
+    'lineEdit_exit_ratio',
+    'lineEdit_initial_outlet_id',
+    'lineEdit_type',
+)
+
+
 class SolverCommonView:
     def __init__(self, parent):
         super().__init__()
@@ -14,6 +49,11 @@ class SolverCommonView:
 
     def _initialize(self):
         self._build_extra_fields()
+
+        # 항목 리스트 없이 위젯 값이 곧 데이터인 패널이라 임시 저장은 불필요하다.
+        # 저장하지 않고 종료할 때 경고하기 위해 변경만 알린다.
+        _extra_ui.connect_autosave(self.ui, _DIRTY_FIELDS,
+                                   lambda *a: _extra_ui.mark_dirty(self))
 
     def _build_extra_fields(self):
         """uic 출력에 없는 입력란을 덧붙인다.

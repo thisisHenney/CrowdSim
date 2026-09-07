@@ -13,6 +13,31 @@ _KNOWN_ITEM_KEYS = {
 _KNOWN_FLAG_KEYS = {'zone', 'solid', 'path_solid'}
 
 
+_DIRTY_FIELDS = (
+    'checkBox_density',
+    'checkBox_final_path_vector',
+    'checkBox_forward_vector',
+    'checkBox_goal_position',
+    'checkBox_line_id',
+    'checkBox_outlet_id',
+    'checkBox_path_direction',
+    'checkBox_path_direction_array',
+    'checkBox_path_field_id',
+    'checkBox_path_solid',
+    'checkBox_position',
+    'checkBox_pressure',
+    'checkBox_rest_density',
+    'checkBox_solid',
+    'checkBox_velocity',
+    'checkBox_zone',
+    'checkBox_zone_id',
+    'lineEdit_end_time',
+    'lineEdit_export_path',
+    'lineEdit_start_time',
+    'lineEdit_time_interval',
+)
+
+
 class ReportData:
     def __init__(self):
         self.start_time = 0.0
@@ -56,6 +81,12 @@ class ReportView:
         ui = self.ui
 
         self._build_extra_fields()
+
+        # 이 패널은 항목 리스트 없이 위젯 값이 곧 데이터라 별도 임시 저장이
+        # 필요 없다. 다만 저장하지 않고 종료할 때 경고하려면 변경을 알려야 한다.
+        # load_input_file()이 위젯을 채울 때는 발동하지 않는 시그널만 쓴다.
+        _extra_ui.connect_autosave(ui, _DIRTY_FIELDS,
+                                   lambda *a: _extra_ui.mark_dirty(self))
 
     def _build_extra_fields(self):
         """결과 출력 경로 입력란을 덧붙인다 (uic 출력에 없음).

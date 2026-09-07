@@ -113,16 +113,19 @@ class GridView:
 
     def _clicked_add(self):
         self.add_data()
+        _extra_ui.mark_dirty(self)
         if hasattr(self._parent, '_load_background_map'):
             self._parent._load_background_map()
 
     def _clicked_save(self):
         self.save_data()
+        _extra_ui.mark_dirty(self)
         if hasattr(self._parent, '_load_background_map'):
             self._parent._load_background_map()
 
     def _clicked_remove(self):
         self.remove_data()
+        _extra_ui.mark_dirty(self)
 
     def get_widget(self):
         return self.ui.widget

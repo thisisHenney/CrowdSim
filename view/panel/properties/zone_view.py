@@ -132,12 +132,15 @@ class ZoneView:
 
     def _clicked_add(self):
         self.add_data()
+        _extra_ui.mark_dirty(self)
 
     def _clicked_save(self):
         self.save_data()
+        _extra_ui.mark_dirty(self)
 
     def _clicked_remove(self):
         self.remove_data()
+        _extra_ui.mark_dirty(self)
 
     def get_widget(self):
         return self.ui.widget

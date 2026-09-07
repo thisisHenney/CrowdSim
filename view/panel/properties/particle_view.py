@@ -185,6 +185,7 @@ class ParticleView:
             ui.lineEdit_binary_translate_y.setText(str(ty))
 
     def _clicked_binary_add(self):
+        _extra_ui.mark_dirty(self)
         self.add_binary_data()
 
     def add_binary_data(self):
@@ -209,6 +210,7 @@ class ParticleView:
         return get_data
 
     def _clicked_binary_save(self):
+        _extra_ui.mark_dirty(self)
         self.save_binary_data()
 
     def save_binary_data(self):
@@ -222,6 +224,7 @@ class ParticleView:
         self.change_combo_text(ui.comboBox_binary_name, index, self._binary_label(cur_data))
 
     def _clicked_binary_remove(self):
+        _extra_ui.mark_dirty(self)
         self.remove_binary_data()
 
     def remove_binary_data(self):
@@ -365,6 +368,7 @@ class ParticleView:
             ui.comboBox_segment_region_type.setCurrentText(cur_data.region_type)
 
     def _clicked_add(self):
+        _extra_ui.mark_dirty(self)
         self.add_data()
 
     def add_data(self):
@@ -400,6 +404,7 @@ class ParticleView:
         return get_data
 
     def _clicked_save(self):
+        _extra_ui.mark_dirty(self)
         self.save_data()
 
     def save_data(self):
@@ -421,6 +426,7 @@ class ParticleView:
         combo.blockSignals(False)
 
     def _clicked_remove(self):
+        _extra_ui.mark_dirty(self)
         self.remove_data()
 
     def remove_data(self):
@@ -435,6 +441,7 @@ class ParticleView:
         self.change_data(index)
 
     def _clicked_segment_add(self):
+        _extra_ui.mark_dirty(self)
         particle_index = self.ui.comboBox_name.currentIndex()
         self.add_segment_data(particle_index)
 
@@ -469,6 +476,7 @@ class ParticleView:
         return get_data
 
     def _clicked_segment_save(self):
+        _extra_ui.mark_dirty(self)
         self.save_segment_data()
 
     def save_segment_data(self):
@@ -492,6 +500,7 @@ class ParticleView:
         combo.blockSignals(False)
 
     def _clicked_segment_remove(self):
+        _extra_ui.mark_dirty(self)
         self.remove_segment_data()
 
     def remove_segment_data(self):

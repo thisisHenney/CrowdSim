@@ -158,3 +158,14 @@ def connect_autosave(ui, names, callback):
             w.clicked.connect(callback)
         elif isinstance(w, QAbstractSpinBox):
             w.editingFinished.connect(callback)
+
+
+def mark_dirty(view):
+    """소속 MainWindow에 "저장되지 않은 변경이 있다"고 알린다.
+
+    View는 부모(MainWindowView)를 _parent로 들고 있지만, 테스트나 단독
+    실행처럼 set_dirty가 없는 부모도 있어 방어적으로 확인한다.
+    """
+    parent = getattr(view, '_parent', None)
+    if parent is not None and hasattr(parent, 'set_dirty'):
+        parent.set_dirty(True)
