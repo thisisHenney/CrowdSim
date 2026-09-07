@@ -58,9 +58,24 @@ def _tokens():
     return base
 
 
+def is_available():
+    """design-system 소스가 옆에 있는지.
+
+    이 폴더는 소스 트리에만 두는 참고 자료라 PyInstaller 배포본에는
+    들어가지 않는다. 없으면 위젯을 쓸 수 없을 뿐 앱 동작에는 문제가 없다.
+    """
+    return (_DS / 'widgets.py').is_file()
+
+
 def setup():
-    """QApplication 생성 이후 1회 호출한다."""
+    """QApplication 생성 이후 1회 호출한다.
+
+    design-system 소스가 없으면 아무것도 하지 않고 False를 반환한다.
+    """
     global _ready, widgets
+
+    if not is_available():
+        return None
 
     if str(_DS) not in sys.path:
         sys.path.insert(0, str(_DS))

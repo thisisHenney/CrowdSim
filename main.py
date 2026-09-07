@@ -45,11 +45,14 @@ if __name__ == '__main__':
     # (design-system/ADOPTION.md 방식 A - 임시 적용)
     # 기존 화면에는 영향이 없다. setStyle("Fusion")/폰트는 건드리지 않는다.
     # 되돌리려면 이 try 블록만 지우면 된다.
+    #
+    # design-system/ 은 소스 트리에만 두는 참고 자료라 배포본(PyInstaller)에는
+    # 없다. 그 경우 setup()이 조용히 None을 반환하므로 메시지를 찍지 않는다.
     try:
         from view.design_adapter import setup as _ds_setup
         _ds_setup()
     except Exception as e:
-        print(f'[CrowdSim] design-system 위젯 초기화 생략: {e}')
+        print(f'[CrowdSim] design-system 위젯 초기화 실패: {e}')
 
     # 터미널에서 Ctrl+C(SIGINT)를 누르면 Qt 이벤트 루프 도중 아무 콜백에나
     # KeyboardInterrupt가 발생해 지저분한 트레이스백이 찍히고 앱이 비정상 종료된다.
