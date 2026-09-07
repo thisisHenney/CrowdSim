@@ -69,6 +69,10 @@ class OutletView:
         # ('추가'를 눌러 항목이 생기면 change_data()가 다시 켠다)
         _extra_ui.set_fields_enabled(ui, _EDIT_FIELDS, False)
 
+        # 항목별 "저장" 버튼을 누르지 않아도 입력값이 메모리에 남게 한다.
+        # (파일에는 툴바 Save/Run 때만 기록된다)
+        _extra_ui.connect_autosave(ui, _EDIT_FIELDS, self._autosave_current)
+
     def _build_extra_fields(self):
         """uic 출력에 없는 입력란을 덧붙인다 (is_erase / grid / 정착·시그모이드)."""
         ui = self.ui
@@ -92,44 +96,65 @@ class OutletView:
             return
         self.change_data(index)
 
-    def change_data(self, index):
+    def _autosave_current(self, *args):
+        """입력란이 편집될 때마다 현재 항목에 즉시 반영한다.
+
+        _filling 중에는 무시한다 - change_data()가 위젯을 채우는 동안에도
+        시그널이 오는데, 그대로 두면 새로 채운 값이 이전 항목에 덮어써진다.
+        """
+        if getattr(self, '_filling', False):
+            return
         ui = self.ui
-        index = index if self.outlet_data and (0 <= index < len(self.outlet_data)) else (
-            len(self.outlet_data) - 1 if len(self.outlet_data) > 0 else -1)
+        index = ui.comboBox_name.currentIndex()
+        if not (0 <= index < len(self.outlet_data)):
+            return
+        self.get_cur_data(self.outlet_data[index])
+        parent = getattr(self, '_parent', None)
+        if parent is not None and hasattr(parent, 'set_dirty'):
+            parent.set_dirty(True)
 
-        if index == -1:
-            _extra_ui.set_fields_enabled(ui, _EDIT_FIELDS, False)
-            ui.radioButton_point.setChecked(True)
-            ui.radioButton_line.setChecked(False)
-            ui.lineEdit_p_x.setText('0')
-            ui.lineEdit_p_y.setText('0')
-            ui.lineEdit_p1_x.setText('0')
-            ui.lineEdit_p1_y.setText('0')
-            ui.lineEdit_p2_x.setText('1')
-            ui.lineEdit_p2_y.setText('1')
-            ui.checkBox_is_erase.setChecked(False)
-            ui.lineEdit_grid.setText('1')
-            ui.lineEdit_settle_radius.setText('')
-            ui.lineEdit_sig_k.setText('')
-            ui.lineEdit_sig_x.setText('')
+    def change_data(self, index):
+        self._filling = True
+        try:
+            ui = self.ui
+            index = index if self.outlet_data and (0 <= index < len(self.outlet_data)) else (
+                len(self.outlet_data) - 1 if len(self.outlet_data) > 0 else -1)
 
-        else:
-            _extra_ui.set_fields_enabled(ui, _EDIT_FIELDS, True)
-            cur_data = self.outlet_data[index]
+            if index == -1:
+                _extra_ui.set_fields_enabled(ui, _EDIT_FIELDS, False)
+                ui.radioButton_point.setChecked(True)
+                ui.radioButton_line.setChecked(False)
+                ui.lineEdit_p_x.setText('0')
+                ui.lineEdit_p_y.setText('0')
+                ui.lineEdit_p1_x.setText('0')
+                ui.lineEdit_p1_y.setText('0')
+                ui.lineEdit_p2_x.setText('1')
+                ui.lineEdit_p2_y.setText('1')
+                ui.checkBox_is_erase.setChecked(False)
+                ui.lineEdit_grid.setText('1')
+                ui.lineEdit_settle_radius.setText('')
+                ui.lineEdit_sig_k.setText('')
+                ui.lineEdit_sig_x.setText('')
 
-            ui.radioButton_point.setChecked(cur_data.is_point)
-            ui.radioButton_line.setChecked(not cur_data.is_point)
-            ui.lineEdit_p_x.setText(str(cur_data.p[0]))
-            ui.lineEdit_p_y.setText(str(cur_data.p[1]))
-            ui.lineEdit_p1_x.setText(str(cur_data.p1[0]))
-            ui.lineEdit_p1_y.setText(str(cur_data.p1[1]))
-            ui.lineEdit_p2_x.setText(str(cur_data.p2[0]))
-            ui.lineEdit_p2_y.setText(str(cur_data.p2[1]))
-            ui.checkBox_is_erase.setChecked(bool(cur_data.is_erase))
-            ui.lineEdit_grid.setText(str(cur_data.grid))
-            ui.lineEdit_settle_radius.setText(_extra_ui.format_num(cur_data.settle_radius))
-            ui.lineEdit_sig_k.setText(_extra_ui.format_num(cur_data.sig_k))
-            ui.lineEdit_sig_x.setText(_extra_ui.format_num(cur_data.sig_x))
+            else:
+                _extra_ui.set_fields_enabled(ui, _EDIT_FIELDS, True)
+                cur_data = self.outlet_data[index]
+
+                ui.radioButton_point.setChecked(cur_data.is_point)
+                ui.radioButton_line.setChecked(not cur_data.is_point)
+                ui.lineEdit_p_x.setText(str(cur_data.p[0]))
+                ui.lineEdit_p_y.setText(str(cur_data.p[1]))
+                ui.lineEdit_p1_x.setText(str(cur_data.p1[0]))
+                ui.lineEdit_p1_y.setText(str(cur_data.p1[1]))
+                ui.lineEdit_p2_x.setText(str(cur_data.p2[0]))
+                ui.lineEdit_p2_y.setText(str(cur_data.p2[1]))
+                ui.checkBox_is_erase.setChecked(bool(cur_data.is_erase))
+                ui.lineEdit_grid.setText(str(cur_data.grid))
+                ui.lineEdit_settle_radius.setText(_extra_ui.format_num(cur_data.settle_radius))
+                ui.lineEdit_sig_k.setText(_extra_ui.format_num(cur_data.sig_k))
+                ui.lineEdit_sig_x.setText(_extra_ui.format_num(cur_data.sig_x))
+        finally:
+            self._filling = False
 
     def _clicked_add(self):
         self.add_data()

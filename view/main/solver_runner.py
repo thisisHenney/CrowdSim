@@ -168,6 +168,7 @@ class SolverRunMixin:
 
     def run_solver(self):
         self.save_input_file()
+        self.set_dirty(False)
         self.vtk.obj_manager.all().remove()
 
         self._anim_reset()

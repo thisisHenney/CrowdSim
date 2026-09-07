@@ -53,38 +53,63 @@ class GridView:
         # ('추가'를 눌러 항목이 생기면 change_data()가 다시 켠다)
         _extra_ui.set_fields_enabled(ui, _EDIT_FIELDS, False)
 
+        # 항목별 "저장" 버튼을 누르지 않아도 입력값이 메모리에 남게 한다.
+        # (파일에는 툴바 Save/Run 때만 기록된다)
+        _extra_ui.connect_autosave(ui, _EDIT_FIELDS, self._autosave_current)
+
     def _changed_combo_name(self, index):
         if index == -1:
             return
         self.change_data(index)
 
-    def change_data(self, index):
+    def _autosave_current(self, *args):
+        """입력란이 편집될 때마다 현재 항목에 즉시 반영한다.
+
+        _filling 중에는 무시한다 - change_data()가 위젯을 채우는 동안에도
+        시그널이 오는데, 그대로 두면 새로 채운 값이 이전 항목에 덮어써진다.
+        """
+        if getattr(self, '_filling', False):
+            return
         ui = self.ui
+        index = ui.comboBox_name.currentIndex()
+        if not (0 <= index < len(self.grid_data)):
+            return
+        self.get_cur_data(self.grid_data[index])
+        parent = getattr(self, '_parent', None)
+        if parent is not None and hasattr(parent, 'set_dirty'):
+            parent.set_dirty(True)
 
-        index = index if self.grid_data and (0 <= index < len(self.grid_data)) else (
-            len(self.grid_data) - 1 if len(self.grid_data) > 0 else -1)
+    def change_data(self, index):
+        self._filling = True
+        try:
+            ui = self.ui
 
-        if index == -1:
-            _extra_ui.set_fields_enabled(ui, _EDIT_FIELDS, False)
-            ui.lineEdit_min_x.setText('')
-            ui.lineEdit_min_y.setText('')
-            ui.lineEdit_max_x.setText('')
-            ui.lineEdit_max_y.setText('')
+            index = index if self.grid_data and (0 <= index < len(self.grid_data)) else (
+                len(self.grid_data) - 1 if len(self.grid_data) > 0 else -1)
 
-            ui.lineEdit_width.setText('')
-            ui.lineEdit_max_particle.setText('')
+            if index == -1:
+                _extra_ui.set_fields_enabled(ui, _EDIT_FIELDS, False)
+                ui.lineEdit_min_x.setText('')
+                ui.lineEdit_min_y.setText('')
+                ui.lineEdit_max_x.setText('')
+                ui.lineEdit_max_y.setText('')
 
-        else:
-            _extra_ui.set_fields_enabled(ui, _EDIT_FIELDS, True)
-            cur_data = self.grid_data[index]
+                ui.lineEdit_width.setText('')
+                ui.lineEdit_max_particle.setText('')
 
-            ui.lineEdit_min_x.setText(str(cur_data.domain_min[0]))
-            ui.lineEdit_min_y.setText(str(cur_data.domain_min[1]))
-            ui.lineEdit_max_x.setText(str(cur_data.domain_max[0]))
-            ui.lineEdit_max_y.setText(str(cur_data.domain_max[1]))
+            else:
+                _extra_ui.set_fields_enabled(ui, _EDIT_FIELDS, True)
+                cur_data = self.grid_data[index]
 
-            ui.lineEdit_width.setText(str(cur_data.width))
-            ui.lineEdit_max_particle.setText(str(cur_data.max_particle))
+                ui.lineEdit_min_x.setText(str(cur_data.domain_min[0]))
+                ui.lineEdit_min_y.setText(str(cur_data.domain_min[1]))
+                ui.lineEdit_max_x.setText(str(cur_data.domain_max[0]))
+                ui.lineEdit_max_y.setText(str(cur_data.domain_max[1]))
+
+                ui.lineEdit_width.setText(str(cur_data.width))
+                ui.lineEdit_max_particle.setText(str(cur_data.max_particle))
+        finally:
+            self._filling = False
 
     def _clicked_add(self):
         self.add_data()

@@ -63,47 +63,72 @@ class ZoneView:
         # ('추가'를 눌러 항목이 생기면 change_data()가 다시 켠다)
         _extra_ui.set_fields_enabled(ui, _EDIT_FIELDS, False)
 
+        # 항목별 "저장" 버튼을 누르지 않아도 입력값이 메모리에 남게 한다.
+        # (파일에는 툴바 Save/Run 때만 기록된다)
+        _extra_ui.connect_autosave(ui, _EDIT_FIELDS, self._autosave_current)
+
     def _changed_combo_name(self, index):
         if index == -1:
             return
         self.change_data(index)
 
-    def change_data(self, index):
+    def _autosave_current(self, *args):
+        """입력란이 편집될 때마다 현재 항목에 즉시 반영한다.
+
+        _filling 중에는 무시한다 - change_data()가 위젯을 채우는 동안에도
+        시그널이 오는데, 그대로 두면 새로 채운 값이 이전 항목에 덮어써진다.
+        """
+        if getattr(self, '_filling', False):
+            return
         ui = self.ui
-        index = index if self.zone_data and (0 <= index < len(self.zone_data)) else (
-            len(self.zone_data) - 1 if len(self.zone_data) > 0 else -1)
+        index = ui.comboBox_name.currentIndex()
+        if not (0 <= index < len(self.zone_data)):
+            return
+        self.get_cur_data(self.zone_data[index])
+        parent = getattr(self, '_parent', None)
+        if parent is not None and hasattr(parent, 'set_dirty'):
+            parent.set_dirty(True)
 
-        if index == -1:
-            _extra_ui.set_fields_enabled(ui, _EDIT_FIELDS, False)
-            ui.lineEdit_p1_x.setText('0')
-            ui.lineEdit_p1_y.setText('0')
-            ui.lineEdit_p2_x.setText('0')
-            ui.lineEdit_p2_y.setText('0')
-            ui.lineEdit_direction_x.setText('0')
-            ui.lineEdit_direction_y.setText('1')
-            ui.lineEdit_length.setText('1.0')
-            ui.comboBox_zone_type.setCurrentText('avoid_zone')
-            ui.lineEdit_k_avo.setText('200.0')
-            ui.lineEdit_avoid_radius.setText('15.0')
-            ui.lineEdit_outlet_id.setText('0')
-            ui.lineEdit_grid.setText('1')
+    def change_data(self, index):
+        self._filling = True
+        try:
+            ui = self.ui
+            index = index if self.zone_data and (0 <= index < len(self.zone_data)) else (
+                len(self.zone_data) - 1 if len(self.zone_data) > 0 else -1)
 
-        else:
-            _extra_ui.set_fields_enabled(ui, _EDIT_FIELDS, True)
-            cur_data = self.zone_data[index]
+            if index == -1:
+                _extra_ui.set_fields_enabled(ui, _EDIT_FIELDS, False)
+                ui.lineEdit_p1_x.setText('0')
+                ui.lineEdit_p1_y.setText('0')
+                ui.lineEdit_p2_x.setText('0')
+                ui.lineEdit_p2_y.setText('0')
+                ui.lineEdit_direction_x.setText('0')
+                ui.lineEdit_direction_y.setText('1')
+                ui.lineEdit_length.setText('1.0')
+                ui.comboBox_zone_type.setCurrentText('avoid_zone')
+                ui.lineEdit_k_avo.setText('200.0')
+                ui.lineEdit_avoid_radius.setText('15.0')
+                ui.lineEdit_outlet_id.setText('0')
+                ui.lineEdit_grid.setText('1')
 
-            ui.lineEdit_p1_x.setText(str(cur_data.p1[0]))
-            ui.lineEdit_p1_y.setText(str(cur_data.p1[1]))
-            ui.lineEdit_p2_x.setText(str(cur_data.p2[0]))
-            ui.lineEdit_p2_y.setText(str(cur_data.p2[1]))
-            ui.lineEdit_direction_x.setText(str(cur_data.direction[0]))
-            ui.lineEdit_direction_y.setText(str(cur_data.direction[1]))
-            ui.lineEdit_length.setText(str(cur_data.length))
-            ui.comboBox_zone_type.setCurrentText(cur_data.zone_type)
-            ui.lineEdit_k_avo.setText(str(cur_data.k_avo))
-            ui.lineEdit_avoid_radius.setText(str(cur_data.avoid_radius))
-            ui.lineEdit_outlet_id.setText(str(cur_data.outlet_id))
-            ui.lineEdit_grid.setText(str(cur_data.grid))
+            else:
+                _extra_ui.set_fields_enabled(ui, _EDIT_FIELDS, True)
+                cur_data = self.zone_data[index]
+
+                ui.lineEdit_p1_x.setText(str(cur_data.p1[0]))
+                ui.lineEdit_p1_y.setText(str(cur_data.p1[1]))
+                ui.lineEdit_p2_x.setText(str(cur_data.p2[0]))
+                ui.lineEdit_p2_y.setText(str(cur_data.p2[1]))
+                ui.lineEdit_direction_x.setText(str(cur_data.direction[0]))
+                ui.lineEdit_direction_y.setText(str(cur_data.direction[1]))
+                ui.lineEdit_length.setText(str(cur_data.length))
+                ui.comboBox_zone_type.setCurrentText(cur_data.zone_type)
+                ui.lineEdit_k_avo.setText(str(cur_data.k_avo))
+                ui.lineEdit_avoid_radius.setText(str(cur_data.avoid_radius))
+                ui.lineEdit_outlet_id.setText(str(cur_data.outlet_id))
+                ui.lineEdit_grid.setText(str(cur_data.grid))
+        finally:
+            self._filling = False
 
     def _clicked_add(self):
         self.add_data()

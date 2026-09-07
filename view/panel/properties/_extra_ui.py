@@ -126,3 +126,35 @@ def set_fields_enabled(ui, names, enabled):
         w = getattr(ui, name, None)
         if w is not None:
             w.setEnabled(enabled)
+
+
+def connect_autosave(ui, names, callback):
+    """입력 위젯이 편집될 때마다 callback을 부르도록 연결한다.
+
+    항목별 "저장" 버튼을 누르지 않아도 입력한 값이 메모리에 남게 하기
+    위한 것이다. 파일에는 여전히 툴바 Save/Run 때만 기록된다.
+
+    사용자가 직접 편집할 때만 발동하는 시그널을 고른다:
+      - QLineEdit.textEdited (textChanged 가 아니다 - setText() 로 위젯을
+        채울 때도 발동해서, 항목을 전환하면 새로 채운 값이 이전 항목에
+        덮어써진다)
+      - QComboBox.activated / QCheckBox.clicked / QRadioButton.clicked
+        (currentIndexChanged/stateChanged 대신 사용자 조작 전용 시그널)
+    """
+    from PySide6.QtWidgets import (QCheckBox, QComboBox, QLineEdit,
+                                   QRadioButton, QAbstractSpinBox)
+
+    for name in names:
+        w = getattr(ui, name, None)
+        if w is None:
+            continue
+        if isinstance(w, QLineEdit):
+            w.textEdited.connect(callback)
+        elif isinstance(w, QComboBox):
+            w.activated.connect(callback)
+            if w.isEditable():
+                w.lineEdit().textEdited.connect(callback)
+        elif isinstance(w, (QCheckBox, QRadioButton)):
+            w.clicked.connect(callback)
+        elif isinstance(w, QAbstractSpinBox):
+            w.editingFinished.connect(callback)

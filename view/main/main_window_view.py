@@ -159,7 +159,7 @@ class MainWindowView(QMainWindow, AnimationMixin, SolverRunMixin,
         cam.SetViewUp(0, 1, 0)
         self.vtk.renderer.ResetCamera()
 
-        self.setWindowTitle(f'{self.app_info.title}-{self.app_info.version}')
+        self._update_title()
 
     def _init_menu_connections(self):
         self._ui.actionNew_Projcect.triggered.connect(self.new_project)
@@ -204,15 +204,17 @@ class MainWindowView(QMainWindow, AnimationMixin, SolverRunMixin,
         if get_path:
             self.prj.path = get_path
             self.prj.name = Path(get_path).name
-            self.setWindowTitle(f'{self.app_info.title} - [{self.prj.path}]')
+            self._update_title()
             self.save_input_file()
+            self.set_dirty(False)
 
     def _close_project(self):
         self.tree.clear_all()
         self.properties.set_defaults()
         self.vtk.obj_manager.all().remove()
         self.prj = ProjectInfor()
-        self.setWindowTitle(f'{self.app_info.title}-{self.app_info.version}')
+        self.set_dirty(False)
+        self._update_title()
 
     def _load_recent_projects(self):
         recent = self._settings().value('recentProjects', [])
@@ -493,7 +495,8 @@ class MainWindowView(QMainWindow, AnimationMixin, SolverRunMixin,
         self.set_defaults_tree()
         self.cmd.set_defaults()
 
-        self.setWindowTitle(f'{self.app_info.title} - [{self.prj.path}]')
+        self.set_dirty(False)
+        self._update_title()
         self._ui.statusbar.showMessage('Ready')
         # VTK 렌더 위젯이 아직 화면에 표시(임베드)되지 않은 상태에서 Render()가 호출되면
         # "must be a top level window" 경고가 뜨고 첫 프레임이 화면에 반영되지 않는다.
@@ -723,6 +726,63 @@ class MainWindowView(QMainWindow, AnimationMixin, SolverRunMixin,
 
     def save(self):
         self.save_input_file()
+        self.set_dirty(False)
+
+    # ---- 변경사항 추적 (저장하지 않고 종료할 때 물어보기 위한 것) ----
+
+    def set_dirty(self, dirty=True):
+        """저장되지 않은 변경이 있는지 표시한다.
+
+        각 Properties 패널의 추가/저장/삭제에서 호출된다. 값을 입력란에
+        치는 것만으로는 켜지지 않는데, 이 프로그램은 항목별 "저장" 버튼을
+        눌러야 내부 데이터에 반영되는 2단계 구조이기 때문이다.
+        """
+        if getattr(self, '_dirty', False) == dirty:
+            return
+        self._dirty = dirty
+        self._update_title()
+
+    def is_dirty(self):
+        return getattr(self, '_dirty', False)
+
+    def _update_title(self):
+        """창 제목. 저장되지 않은 변경이 있으면 앞에 * 를 붙인다."""
+        if self.prj.path:
+            base = f'{self.app_info.title} - [{self.prj.path}]'
+        else:
+            base = f'{self.app_info.title}-{self.app_info.version}'
+        self.setWindowTitle(('*' + base) if self.is_dirty() else base)
+
+    def _confirm_discard_changes(self):
+        """저장되지 않은 변경이 있으면 어떻게 할지 묻는다.
+
+        저장을 강제하지 않는다 - "저장 안 함"을 고르면 그대로 버린다.
+        진행해도 되면 True, 사용자가 취소했으면 False.
+        """
+        if not self.is_dirty():
+            return True
+
+        box = QMessageBox(self)
+        box.setIcon(QMessageBox.Icon.Warning)
+        box.setWindowTitle('변경사항 저장')
+        box.setText('저장하지 않은 변경사항이 있습니다.')
+        box.setInformativeText('저장하시겠습니까?')
+        save = box.addButton('저장', QMessageBox.ButtonRole.AcceptRole)
+        discard = box.addButton('저장 안 함', QMessageBox.ButtonRole.DestructiveRole)
+        cancel = box.addButton('취소', QMessageBox.ButtonRole.RejectRole)
+        box.setDefaultButton(save)
+        box.exec()
+
+        clicked = box.clickedButton()
+        if clicked is cancel:
+            return False
+        if clicked is save:
+            # 저장할 프로젝트 경로가 없으면 Save As 로 넘긴다.
+            if not self.prj.path:
+                self._save_as_project()
+                return not self.is_dirty()
+            self.save()
+        return True
 
     def _settings(self):
         ini_path = self.app_info.user_path / 'CrowdSim' / 'window_state.ini'
@@ -752,6 +812,12 @@ class MainWindowView(QMainWindow, AnimationMixin, SolverRunMixin,
             self.solver_watcher.end()
 
     def closeEvent(self, e):
+        # 저장하지 않은 변경이 있으면 먼저 묻는다(저장/저장 안 함/취소).
+        # 변경이 없으면 이 단계는 건너뛴다.
+        if not self._confirm_discard_changes():
+            e.ignore()
+            return
+
         reply = QMessageBox.question(
             self, '종료 확인', '프로그램을 종료하시겠습니까?',
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
