@@ -7,6 +7,28 @@ _KNOWN_INLET_KEYS = {'name', 'type', 'exclude_outlets', 'p1', 'p2', 'velocity', 
                      'interval', 'start_time', 'end_time', 'material_index', 'grid', 'outlet_index'}
 
 
+_EDIT_FIELDS = (
+    'lineEdit_p1_x',
+    'lineEdit_p1_y',
+    'lineEdit_p2_x',
+    'lineEdit_p2_y',
+    'lineEdit_vel_x',
+    'lineEdit_vel_y',
+    'lineEdit_dx',
+    'lineEdit_interval',
+    'lineEdit_start_time',
+    'lineEdit_end_time',
+    'lineEdit_material_index',
+    'lineEdit_grid',
+    'lineEdit_outlet_index',
+    'lineEdit_exclude_outlets',
+    # 항목이 없으면 저장/삭제도 대상이 없다.
+    # ('추가'는 잠그지 않는다 - 첫 항목을 만드는 유일한 길이다)
+    'pushButton_save',
+    'pushButton_remove',
+)
+
+
 class InletData:
     def __init__(self):
         self.name = ''
@@ -44,6 +66,10 @@ class InletView:
 
         self._build_extra_fields()
 
+        # 목록이 비어 있는 초기 상태에서는 입력란을 잠가 둔다.
+        # ('추가'를 눌러 항목이 생기면 change_data()가 다시 켠다)
+        _extra_ui.set_fields_enabled(ui, _EDIT_FIELDS, False)
+
     def _build_extra_fields(self):
         """uic 출력에 없는 입력란을 덧붙인다 (유입 시작/종료 시각, 제외 출구)."""
         ui = self.ui
@@ -68,6 +94,7 @@ class InletView:
             len(self.inlet_data) - 1 if len(self.inlet_data) > 0 else -1)
 
         if index == -1:
+            _extra_ui.set_fields_enabled(ui, _EDIT_FIELDS, False)
             ui.lineEdit_p1_x.setText('0')
             ui.lineEdit_p1_y.setText('0')
             ui.lineEdit_p2_x.setText('1')
@@ -87,6 +114,7 @@ class InletView:
             ui.lineEdit_exclude_outlets.setText('')
 
         else:
+            _extra_ui.set_fields_enabled(ui, _EDIT_FIELDS, True)
             cur_data = self.inlet_data[index]
 
             ui.lineEdit_p1_x.setText(str(cur_data.p1[0]))

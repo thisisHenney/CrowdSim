@@ -9,6 +9,27 @@ _KNOWN_OUTLET_KEYS = {'name', 'num', 'is_erase', 'type', 'p1', 'p2', 'grid',
                       'settle_radius', 'sig_k', 'sig_x'}
 
 
+_EDIT_FIELDS = (
+    'radioButton_point',
+    'radioButton_line',
+    'checkBox_is_erase',
+    'lineEdit_p_x',
+    'lineEdit_p_y',
+    'lineEdit_p1_x',
+    'lineEdit_p1_y',
+    'lineEdit_p2_x',
+    'lineEdit_p2_y',
+    'lineEdit_grid',
+    'lineEdit_settle_radius',
+    'lineEdit_sig_k',
+    'lineEdit_sig_x',
+    # 항목이 없으면 저장/삭제도 대상이 없다.
+    # ('추가'는 잠그지 않는다 - 첫 항목을 만드는 유일한 길이다)
+    'pushButton_save',
+    'pushButton_remove',
+)
+
+
 class OutletData:
     def __init__(self):
         self.name = 'outlet'
@@ -44,6 +65,10 @@ class OutletView:
 
         self._build_extra_fields()
 
+        # 목록이 비어 있는 초기 상태에서는 입력란을 잠가 둔다.
+        # ('추가'를 눌러 항목이 생기면 change_data()가 다시 켠다)
+        _extra_ui.set_fields_enabled(ui, _EDIT_FIELDS, False)
+
     def _build_extra_fields(self):
         """uic 출력에 없는 입력란을 덧붙인다 (is_erase / grid / 정착·시그모이드)."""
         ui = self.ui
@@ -73,6 +98,7 @@ class OutletView:
             len(self.outlet_data) - 1 if len(self.outlet_data) > 0 else -1)
 
         if index == -1:
+            _extra_ui.set_fields_enabled(ui, _EDIT_FIELDS, False)
             ui.radioButton_point.setChecked(True)
             ui.radioButton_line.setChecked(False)
             ui.lineEdit_p_x.setText('0')
@@ -88,6 +114,7 @@ class OutletView:
             ui.lineEdit_sig_x.setText('')
 
         else:
+            _extra_ui.set_fields_enabled(ui, _EDIT_FIELDS, True)
             cur_data = self.outlet_data[index]
 
             ui.radioButton_point.setChecked(cur_data.is_point)

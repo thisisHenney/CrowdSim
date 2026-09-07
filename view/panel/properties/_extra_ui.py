@@ -110,3 +110,19 @@ def parse_xy(x_text, y_text):
     if x is None and y is None:
         return []
     return [x if x is not None else 0, y if y is not None else 0]
+
+
+def set_fields_enabled(ui, names, enabled):
+    """항목별 편집 위젯을 한꺼번에 활성/비활성한다.
+
+    목록에 항목이 하나도 없을 때(= change_data(-1)) 입력란을 비우기만 하면
+    빈 칸에 값을 쳐 넣을 수 있는 것처럼 보인다. 실제로는 저장할 대상이 없어
+    입력이 사라지므로, "추가"를 누르기 전까지는 아예 비활성으로 둔다.
+
+    ui 에 없는 이름은 조용히 건너뛴다. 패널마다 위젯 구성이 조금씩 다르고,
+    일부는 _extra_ui 로 나중에 덧붙기 때문이다.
+    """
+    for name in names:
+        w = getattr(ui, name, None)
+        if w is not None:
+            w.setEnabled(enabled)

@@ -1,8 +1,22 @@
 from nextlib.utils.ui import load_ui
 from view.panel.properties.material_ui import Ui_MaterialsForm
+from view.panel.properties import _extra_ui
 
 
 _KNOWN_MATERIAL_KEYS = {'name', 'is_main_material', 'rho_min', 'rho_max', 'mu', 'outlet_id'}
+
+
+_EDIT_FIELDS = (
+    'checkBox_main',
+    'lineEdit_rho_min',
+    'lineEdit_rho_max',
+    'lineEdit_mu',
+    'lineEdit_outlet_id',
+    # 항목이 없으면 저장/삭제도 대상이 없다.
+    # ('추가'는 잠그지 않는다 - 첫 항목을 만드는 유일한 길이다)
+    'pushButton_save',
+    'pushButton_remove',
+)
 
 
 class MaterialData:
@@ -35,6 +49,10 @@ class MaterialsView:
         ui.pushButton_save.clicked.connect(self._clicked_save)
         ui.pushButton_remove.clicked.connect(self._clicked_remove)
 
+        # 목록이 비어 있는 초기 상태에서는 입력란을 잠가 둔다.
+        # ('추가'를 눌러 항목이 생기면 change_data()가 다시 켠다)
+        _extra_ui.set_fields_enabled(ui, _EDIT_FIELDS, False)
+
     def _changed_combo_name(self, index):
         if index == -1:
             return
@@ -47,6 +65,7 @@ class MaterialsView:
         index = index if self.material_data and (0 <= index < len(self.material_data)) else (len(self.material_data) - 1 if len(self.material_data) > 0 else -1)
 
         if index == -1:
+            _extra_ui.set_fields_enabled(ui, _EDIT_FIELDS, False)
             ui.checkBox_main.setChecked(False)
             ui.lineEdit_rho_min.setText('')
             ui.lineEdit_rho_max.setText('')
@@ -54,6 +73,7 @@ class MaterialsView:
             ui.lineEdit_outlet_id.setText('')
 
         else:
+            _extra_ui.set_fields_enabled(ui, _EDIT_FIELDS, True)
             cur_data = self.material_data[index]
 
             ui.checkBox_main.setChecked(cur_data.is_main)

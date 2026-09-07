@@ -1,8 +1,23 @@
 from nextlib.utils.ui import load_ui
 from view.panel.properties.grid_ui import Ui_GridForm
+from view.panel.properties import _extra_ui
 
 
 _KNOWN_GRID_KEYS = {'name', 'domain', 'width', 'max_particle'}
+
+
+_EDIT_FIELDS = (
+    'lineEdit_min_x',
+    'lineEdit_min_y',
+    'lineEdit_max_x',
+    'lineEdit_max_y',
+    'lineEdit_width',
+    'lineEdit_max_particle',
+    # 항목이 없으면 저장/삭제도 대상이 없다.
+    # ('추가'는 잠그지 않는다 - 첫 항목을 만드는 유일한 길이다)
+    'pushButton_save',
+    'pushButton_remove',
+)
 
 
 class GridData:
@@ -34,6 +49,10 @@ class GridView:
         ui.pushButton_save.clicked.connect(self._clicked_save)
         ui.pushButton_remove.clicked.connect(self._clicked_remove)
 
+        # 목록이 비어 있는 초기 상태에서는 입력란을 잠가 둔다.
+        # ('추가'를 눌러 항목이 생기면 change_data()가 다시 켠다)
+        _extra_ui.set_fields_enabled(ui, _EDIT_FIELDS, False)
+
     def _changed_combo_name(self, index):
         if index == -1:
             return
@@ -46,6 +65,7 @@ class GridView:
             len(self.grid_data) - 1 if len(self.grid_data) > 0 else -1)
 
         if index == -1:
+            _extra_ui.set_fields_enabled(ui, _EDIT_FIELDS, False)
             ui.lineEdit_min_x.setText('')
             ui.lineEdit_min_y.setText('')
             ui.lineEdit_max_x.setText('')
@@ -55,6 +75,7 @@ class GridView:
             ui.lineEdit_max_particle.setText('')
 
         else:
+            _extra_ui.set_fields_enabled(ui, _EDIT_FIELDS, True)
             cur_data = self.grid_data[index]
 
             ui.lineEdit_min_x.setText(str(cur_data.domain_min[0]))
