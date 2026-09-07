@@ -350,6 +350,11 @@ QGroupBox {{
     padding-top: 8px;
     background: {T('BG')};
 }}
+/* checkable 그룹박스는 체크를 꺼도 테두리를 그대로 둔다.
+   테두리가 사라지면 토글할 수 있는 영역이라는 것이 보이지 않는다. */
+QGroupBox:!enabled {{
+    border: 1px solid {T('BORDER')};
+}}
 QGroupBox::title {{
     color: {T('DIM')};
     subcontrol-origin: margin;
@@ -437,7 +442,8 @@ QCheckBox, QRadioButton {{
     color: {T('TEXT')};
     spacing: 6px;
 }}
-QCheckBox::indicator, QRadioButton::indicator {{
+QCheckBox::indicator, QRadioButton::indicator,
+QGroupBox::indicator {{
     width: 14px;
     height: 14px;
     border: 1px solid {T('ACCENT')};
@@ -447,20 +453,21 @@ QCheckBox::indicator, QRadioButton::indicator {{
 QRadioButton::indicator {{
     border-radius: 7px;
 }}
-QCheckBox::indicator:hover, QRadioButton::indicator:hover {{
-    background: #dbeafe;
+QCheckBox::indicator:hover, QRadioButton::indicator:hover,
+QGroupBox::indicator:hover {{
+    background: {T('HOVER_BG')};
     border: 1.5px solid {T('ACCENT')};
 }}
 QRadioButton::indicator:hover {{
     border-radius: 7px;
 }}
-QCheckBox::indicator:checked {{
+QCheckBox::indicator:checked, QGroupBox::indicator:checked {{
     background: {T('CARD')};
     border-color: {T('ACCENT')};
     image: url({_ICONS}/checkmark_blue.svg);
 }}
-QCheckBox::indicator:checked:hover {{
-    background: #dbeafe;
+QCheckBox::indicator:checked:hover, QGroupBox::indicator:checked:hover {{
+    background: {T('HOVER_BG')};
     border: 1.5px solid {T('ACCENT')};
     image: url({_ICONS}/checkmark_blue.svg);
 }}
