@@ -513,4 +513,39 @@ QToolTip {{
     padding: 5px 10px;
     font-size: 9pt;
 }}
+
+/* design-system 위젯용 (design-system/ADOPTION.md 방식 A)
+   #field / #group 은 design-system widgets.py 의 Field/Group 만 쓰는
+   objectName 이라, 기존 화면 위젯에는 영향이 없다. */
+#field {{
+    background: {T('CARD')};
+    border: 1px solid {T('BORDER')};
+    border-radius: 5px;
+    padding: 4px 7px;
+    color: {T('TEXT')};
+}}
+#field:focus {{
+    border: 2px solid {T('ACCENT')};
+    padding: 3px 6px;
+}}
+#field[state="computed"] {{
+    background: {T('ALT_ROW')};
+    color: {T('ACCENT')};
+    border: 1px dashed {T('ACCENT')};
+}}
+#field[state="bad"] {{
+    border: 1px solid #b91c1c;
+}}
+#group {{
+    background: {T('BG')};
+    border: 1px solid {T('BORDER')};
+    border-radius: 6px;
+}}
+#groupHead {{
+    background: {T('BAR_BG')};
+    border-bottom: 1px solid {T('BORDER')};
+}}
+#groupBody {{
+    background: {T('BG')};
+}}
 """
