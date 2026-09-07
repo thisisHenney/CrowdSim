@@ -164,7 +164,12 @@ class ExportView:
         return self.ui.widget
 
     def save_input_file(self, solver):
+        # Export 패널은 내보내기 액션(결과 복사/비디오/이미지 시퀀스) 전용이라
+        # 입력 JSON에 영속시킬 상태가 없다. 프레임 범위 입력은 매 내보내기마다
+        # 새로 지정하는 일회성 값이므로 저장하지 않는다.
+        # (결과 경로 export_path는 Report 패널이 관리한다 - report_view.py)
         return solver
 
     def load_input_file(self, solver):
+        # save_input_file과 동일한 이유로 복원할 상태가 없다.
         pass
