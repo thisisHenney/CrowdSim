@@ -175,10 +175,23 @@ class MainWindowView(QMainWindow, AnimationMixin, SolverRunMixin,
 
         self._ui.actionProperties.setVisible(False)
 
+        # menuSolver/menuAnalysis는 uic가 만든 이름과 화면 제목이 어긋나 있다.
+        # (menuSolver의 제목은 "Hall", menuAnalysis의 제목이 "Solver")
+        # 여기서는 제목이 "Solver"인 menuAnalysis를 실제 Solver 메뉴로 쓴다.
         self._ui.menuSolver.menuAction().setVisible(False)
-        self._ui.menuAnalysis.menuAction().setVisible(False)
         self._ui.menuCrowd.menuAction().setVisible(False)
         self._ui.menuReport.menuAction().setVisible(False)
+
+        # Solver 메뉴 (File과 Window 사이). Run/Stop은 툴바 버튼과 같은 QAction을
+        # 공유하므로 활성/비활성 상태도 자동으로 함께 움직인다.
+        #
+        # 툴바 쪽은 toolBar.actionTriggered 하나로 받아 처리하는데, 그 시그널은
+        # 툴바 위에서 눌렀을 때만 나온다. 메뉴에서 눌러도 동작하도록 액션
+        # 자체의 triggered에 직접 연결한다.
+        self.action_run.triggered.connect(self.run_solver)
+        self.action_stop.triggered.connect(self.stop_solver)
+        self._ui.menuAnalysis.addAction(self.action_run)
+        self._ui.menuAnalysis.addAction(self.action_stop)
 
         self._ui.actionSetting.triggered.connect(
             lambda: self._ui.dockWidget_settings.setVisible(not self._ui.dockWidget_settings.isVisible()))
@@ -419,10 +432,8 @@ class MainWindowView(QMainWindow, AnimationMixin, SolverRunMixin,
             self.open_project()
         elif action == self.action_file_save:
             self.save()
-        elif action == self.action_run:
-            self.run_solver()
-        elif action == self.action_stop:
-            self.stop_solver()
+        # Run/Stop은 액션의 triggered에 직접 연결돼 있다. 여기서 또 부르면
+        # 툴바로 눌렀을 때 두 번 실행된다.
         elif action == self.action_bg_map:
             self._select_background_map()
         elif action == self.action_bg_map_adjust:
